@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-06-28T22:28:48.105Z",
+  "summary": {
+    "totalTests": 4,
+    "passed": 0,
+    "failed": 4
+  },
+  "results": {
+    "supabaseConnection": {
+      "success": false
+    },
+    "databaseSchema": {
+      "success": false
+    },
+    "environmentSetup": {
+      "success": false
+    },
+    "edgeFunctions": {
+      "create-payment": {
+        "success": false
+      },
+      "verify-payment": {
+        "success": false
+      },
+      "setup-environment": {
+        "success": false
+      }
+    }
+  },
+  "recommendations": [
+    "Fix Supabase connection configuration",
+    "Set required environment variables in Supabase",
+    "Verify database schema and RLS policies"
+  ]
+}

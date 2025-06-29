@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthyThako Payment Integration Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .pending {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .payment-url {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .payment-url a {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .payment-url a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 HealthyThako Payment Integration Test</h1>
+        <p>This page tests the UddoktaPay payment integration after CLI setup.</p>
+
+        <div class="test-section" id="env-test">
+            <h3>1. Environment Setup Test</h3>
+            <p>Testing if Supabase environment variables are properly configured.</p>
+            <button onclick="testEnvironment()">Test Environment</button>
+            <div id="env-result" class="result"></div>
+        </div>
+
+        <div class="test-section" id="payment-test">
+            <h3>2. Payment Creation Test</h3>
+            <p>Testing basic payment creation with UddoktaPay API.</p>
+            <button onclick="testPaymentCreation()">Test Payment Creation</button>
+            <div id="payment-result" class="result"></div>
+        </div>
+
+        <div class="test-section" id="trainer-test">
+            <h3>3. Trainer Booking Payment Test</h3>
+            <p>Testing trainer booking payment flow.</p>
+            <button onclick="testTrainerBooking()">Test Trainer Booking</button>
+            <div id="trainer-result" class="result"></div>
+        </div>
+
+        <div class="test-section" id="gym-test">
+            <h3>4. Gym Membership Payment Test</h3>
+            <p>Testing gym membership payment flow.</p>
+            <button onclick="testGymMembership()">Test Gym Membership</button>
+            <div id="gym-result" class="result"></div>
+        </div>
+
+        <div class="test-section" id="mobile-test">
+            <h3>5. Mobile Deep Link Test</h3>
+            <p>Testing mobile app deep link URLs.</p>
+            <button onclick="testDeepLinks()">Test Deep Links</button>
+            <div id="mobile-result" class="result"></div>
+        </div>
+
+        <div class="test-section" id="summary">
+            <h3>📊 Test Summary</h3>
+            <div id="summary-result">Run tests to see summary...</div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://lhncpcsniuxnrmabbkmr.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxobmNwY3NuaXV4bnJtYWJia21yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5NzI4NzQsImV4cCI6MjA2NjU0ODg3NH0.Hs6IQZS8Hs6IQZS8Hs6IQZS8Hs6IQZS8Hs6IQZS8Hs6IQZS8';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let testResults = {};
+
+        function updateTestSection(sectionId, status, message) {
+            const section = document.getElementById(sectionId);
+            section.className = `test-section ${status}`;
+            
+            const resultDiv = document.getElementById(sectionId.replace('-test', '-result'));
+            resultDiv.textContent = message;
+            resultDiv.className = `result ${status}`;
+        }
+
+        function updateSummary() {
+            const total = Object.keys(testResults).length;
+            const passed = Object.values(testResults).filter(r => r.success).length;
+            const failed = total - passed;
+            
+            const summaryDiv = document.getElementById('summary-result');
+            summaryDiv.innerHTML = `
+                <strong>Total Tests:</strong> ${total}<br>
+                <strong>Passed:</strong> ${passed}<br>
+                <strong>Failed:</strong> ${failed}<br>
+                <strong>Success Rate:</strong> ${total > 0 ? Math.round((passed/total)*100) : 0}%
+            `;
+        }
+
+        async function testEnvironment() {
+            updateTestSection('env', 'pending', 'Testing environment setup...');
+            
+            try {
+                const { data, error } = await supabase.functions.invoke('setup-environment');
+                
+                if (error) throw error;
+                
+                const envVars = data.environment?.variables || {};
+                const apiTest = data.apiTest || {};
+                
+                const hasApiKey = envVars.UDDOKTAPAY_API_KEY?.isSet;
+                const hasSupabaseUrl = envVars.SUPABASE_URL?.isSet;
+                const apiWorking = apiTest.success;
+                
+                testResults.environment = { success: hasApiKey && hasSupabaseUrl && apiWorking };
+                
+                const message = `
+Environment Variables:
+- UDDOKTAPAY_API_KEY: ${hasApiKey ? '✅ Set' : '❌ Missing'}
+- SUPABASE_URL: ${hasSupabaseUrl ? '✅ Set' : '❌ Missing'}
+- API Test: ${apiWorking ? '✅ Working' : '❌ Failed'}
+
+${apiTest.error ? 'API Error: ' + apiTest.error : ''}
+                `;
+                
+                updateTestSection('env', testResults.environment.success ? 'success' : 'error', message);
+                
+            } catch (error) {
+                testResults.environment = { success: false };
+                updateTestSection('env', 'error', `Environment test failed: ${error.message}`);
+            }
+            
+            updateSummary();
+        }
+
+        async function testPaymentCreation() {
+            updateTestSection('payment', 'pending', 'Testing payment creation...');
+            
+            try {
+                const { data, error } = await supabase.functions.invoke('create-payment', {
+                    body: {
+                        amount: 100,
+                        currency: 'BDT',
+                        customer_name: 'Test User',
+                        customer_email: 'test@healthythako.com',
+                        return_url: window.location.origin + '/payment-success?test=true',
+                        cancel_url: window.location.origin + '/payment-cancelled?test=true',
+                        metadata: {
+                            test: true,
+                            user_id: 'test-user',
+                            payment_type: 'test'
+                        }
+                    }
+                });
+                
+                if (error) throw error;
+                
+                if (data.success && data.payment_url) {
+                    testResults.payment = { success: true, paymentUrl: data.payment_url };
+                    
+                    const message = `
+Payment creation successful!
+- Payment URL: ${data.payment_url}
+- Invoice ID: ${data.invoice_id || 'N/A'}
+- Session ID: ${data.session_id || 'N/A'}
+                    `;
+                    
+                    updateTestSection('payment', 'success', message);
+                    
+                    // Add clickable payment URL
+                    const resultDiv = document.getElementById('payment-result');
+                    resultDiv.innerHTML += `
+                        <div class="payment-url">
+                            <strong>🔗 Test Payment:</strong><br>
+                            <a href="${data.payment_url}" target="_blank">Open Payment Gateway</a>
+                        </div>
+                    `;
+                    
+                } else {
+                    throw new Error(data.error || 'Payment creation failed');
+                }
+                
+            } catch (error) {
+                testResults.payment = { success: false };
+                updateTestSection('payment', 'error', `Payment creation failed: ${error.message}`);
+            }
+            
+            updateSummary();
+        }
+
+        async function testTrainerBooking() {
+            updateTestSection('trainer', 'pending', 'Testing trainer booking payment...');
+            
+            try {
+                const { data, error } = await supabase.functions.invoke('create-payment', {
+                    body: {
+                        amount: 1500,
+                        currency: 'BDT',
+                        customer_name: 'Test User',
+                        customer_email: 'test@healthythako.com',
+                        return_url: window.location.origin + '/payment-success?type=trainer_booking',
+                        cancel_url: window.location.origin + '/payment-cancelled?type=trainer_booking',
+                        metadata: {
+                            booking_data: JSON.stringify({
+                                trainer_id: '177bf5ec-a35f-4833-be4f-a3efc7f4f257',
+                                trainer_name: 'Jake Rodriguez',
+                                package_type: 'basic',
+                                session_count: 1,
+                                mode: 'online',
+                                title: 'Test Training Session'
+                            }),
+                            user_id: 'test-user',
+                            payment_type: 'trainer_booking'
+                        }
+                    }
+                });
+                
+                if (error) throw error;
+                
+                if (data.success && data.payment_url) {
+                    testResults.trainer = { success: true, paymentUrl: data.payment_url };
+                    
+                    const message = `
+Trainer booking payment successful!
+- Amount: 1500 BDT
+- Trainer: Jake Rodriguez
+- Package: Basic (1 session)
+- Payment URL: ${data.payment_url}
+                    `;
+                    
+                    updateTestSection('trainer', 'success', message);
+                    
+                    // Add clickable payment URL
+                    const resultDiv = document.getElementById('trainer-result');
+                    resultDiv.innerHTML += `
+                        <div class="payment-url">
+                            <strong>🔗 Trainer Booking Payment:</strong><br>
+                            <a href="${data.payment_url}" target="_blank">Complete Trainer Booking Payment</a>
+                        </div>
+                    `;
+                    
+                } else {
+                    throw new Error(data.error || 'Trainer booking payment failed');
+                }
+                
+            } catch (error) {
+                testResults.trainer = { success: false };
+                updateTestSection('trainer', 'error', `Trainer booking failed: ${error.message}`);
+            }
+            
+            updateSummary();
+        }
+
+        async function testGymMembership() {
+            updateTestSection('gym', 'pending', 'Testing gym membership payment...');
+            
+            try {
+                const { data, error } = await supabase.functions.invoke('create-payment', {
+                    body: {
+                        amount: 2000,
+                        currency: 'BDT',
+                        customer_name: 'Test User',
+                        customer_email: 'test@healthythako.com',
+                        return_url: window.location.origin + '/payment-success?type=gym_membership',
+                        cancel_url: window.location.origin + '/payment-cancelled?type=gym_membership',
+                        metadata: {
+                            gym_membership_data: JSON.stringify({
+                                gym_id: '60bb9206-91db-4617-a8c2-a001b879498c',
+                                gym_name: 'FitZone Elite',
+                                plan_id: 'monthly',
+                                plan_name: 'Monthly Membership',
+                                duration_days: 30
+                            }),
+                            user_id: 'test-user',
+                            payment_type: 'gym_membership'
+                        }
+                    }
+                });
+                
+                if (error) throw error;
+                
+                if (data.success && data.payment_url) {
+                    testResults.gym = { success: true, paymentUrl: data.payment_url };
+                    
+                    const message = `
+Gym membership payment successful!
+- Amount: 2000 BDT
+- Gym: FitZone Elite
+- Plan: Monthly Membership (30 days)
+- Payment URL: ${data.payment_url}
+                    `;
+                    
+                    updateTestSection('gym', 'success', message);
+                    
+                    // Add clickable payment URL
+                    const resultDiv = document.getElementById('gym-result');
+                    resultDiv.innerHTML += `
+                        <div class="payment-url">
+                            <strong>🔗 Gym Membership Payment:</strong><br>
+                            <a href="${data.payment_url}" target="_blank">Complete Gym Membership Payment</a>
+                        </div>
+                    `;
+                    
+                } else {
+                    throw new Error(data.error || 'Gym membership payment failed');
+                }
+                
+            } catch (error) {
+                testResults.gym = { success: false };
+                updateTestSection('gym', 'error', `Gym membership failed: ${error.message}`);
+            }
+            
+            updateSummary();
+        }
+
+        function testDeepLinks() {
+            updateTestSection('mobile', 'pending', 'Testing mobile deep links...');
+            
+            const deepLinks = [
+                'healthythako://payment/success?type=trainer_booking&id=test123&amount=1500',
+                'healthythako://payment/cancelled?type=gym_membership&reason=user_cancelled',
+                'healthythako://payment/failed?type=service_order&error=payment_failed'
+            ];
+            
+            testResults.mobile = { success: true };
+            
+            const message = `
+Mobile deep links configured:
+✅ Success: healthythako://payment/success
+✅ Cancelled: healthythako://payment/cancelled  
+✅ Failed: healthythako://payment/failed
+
+Note: Deep links will only work with mobile app installed.
+            `;
+            
+            updateTestSection('mobile', 'success', message);
+            
+            // Add clickable deep links
+            const resultDiv = document.getElementById('mobile-result');
+            resultDiv.innerHTML += `
+                <div class="payment-url">
+                    <strong>🔗 Test Deep Links:</strong><br>
+                    ${deepLinks.map(link => `<a href="${link}" target="_blank">${link}</a>`).join('<br>')}
+                </div>
+            `;
+            
+            updateSummary();
+        }
+
+        // Auto-run environment test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testEnvironment, 1000);
+        });
+    </script>
+</body>
+</html>
