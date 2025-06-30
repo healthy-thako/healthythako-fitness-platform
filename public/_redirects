@@ -1,0 +1,23 @@
+# Netlify Redirects Configuration for HealthyThako
+# This file handles SPA routing and API redirects
+
+# API redirects to Supabase
+/api/* https://lhncpcsniuxnrmabbkmr.supabase.co/rest/v1/:splat 200
+/auth/* https://lhncpcsniuxnrmabbkmr.supabase.co/auth/v1/:splat 200
+/functions/* https://lhncpcsniuxnrmabbkmr.supabase.co/functions/v1/:splat 200
+
+# Handle SPA routing - all routes should serve index.html
+/* /index.html 200
+
+# Specific redirects for common routes (optional, for better SEO)
+/login /index.html 200
+/register /index.html 200
+/dashboard/* /index.html 200
+/trainer/* /index.html 200
+/gym/* /index.html 200
+/admin/* /index.html 200
+/client/* /index.html 200
+/payment-* /index.html 200
+
+# Handle 404s
+/404 /index.html 200
