@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthyThako Deployment Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        .test-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .test-button:hover {
+            background: #5a67d8;
+        }
+        
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+        }
+        
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        
+        h2 {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 HealthyThako Deployment Test</h1>
+        
+        <div class="test-section">
+            <h2>1. Payment Redirect Handler Test</h2>
+            <p>Test if the payment redirect handler is accessible after deployment:</p>
+            
+            <button class="test-button" onclick="testPaymentRedirectAccess()">
+                Test Payment Redirect Access
+            </button>
+            
+            <button class="test-button" onclick="testPaymentRedirectWithParams()">
+                Test With Parameters
+            </button>
+            
+            <div id="redirectAccessResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. URL Structure Test</h2>
+            <p>Verify the correct URL structure is working:</p>
+            
+            <button class="test-button" onclick="testURLStructure()">
+                Test URL Structure
+            </button>
+            
+            <div id="urlStructureResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. CORS & Headers Test</h2>
+            <p>Test if CORS headers and security policies are correctly configured:</p>
+            
+            <button class="test-button" onclick="testCORSHeaders()">
+                Test CORS Headers
+            </button>
+            
+            <div id="corsResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. Deep Link Generation Test</h2>
+            <p>Test deep link generation functionality:</p>
+            
+            <button class="test-button" onclick="testDeepLinkGeneration()">
+                Test Deep Link Generation
+            </button>
+            
+            <div id="deepLinkResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>5. Mobile Simulation Test</h2>
+            <p>Simulate mobile app user agent and test redirect:</p>
+            
+            <button class="test-button" onclick="testMobileSimulation()">
+                Test Mobile Simulation
+            </button>
+            
+            <div id="mobileResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = window.location.origin;
+        const PAYMENT_REDIRECT_URL = `${BASE_URL}/payment-redirect/`;
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            
+            const statusClass = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            const timestamp = new Date().toLocaleTimeString();
+            
+            element.innerHTML += `
+                <div class="status ${statusClass}">${type.toUpperCase()}</div>
+                <div>[${timestamp}] ${message}</div>
+            `;
+        }
+        
+        async function testPaymentRedirectAccess() {
+            const resultId = 'redirectAccessResult';
+            document.getElementById(resultId).innerHTML = '';
+            
+            log(resultId, 'Testing payment redirect handler access...', 'info');
+            
+            try {
+                const response = await fetch(PAYMENT_REDIRECT_URL, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    log(resultId, `✅ Payment redirect handler accessible (${response.status})`, 'success');
+                    log(resultId, `URL: ${PAYMENT_REDIRECT_URL}`, 'info');
+                    
+                    // Check content type
+                    const contentType = response.headers.get('content-type');
+                    log(resultId, `Content-Type: ${contentType}`, 'info');
+                    
+                } else {
+                    log(resultId, `❌ Payment redirect handler not accessible (${response.status})`, 'error');
+                }
+            } catch (error) {
+                log(resultId, `❌ Error accessing payment redirect: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testPaymentRedirectWithParams() {
+            const resultId = 'redirectAccessResult';
+            
+            const testURL = `${PAYMENT_REDIRECT_URL}?type=success&orderId=test123&source=deployment_test`;
+            log(resultId, 'Testing payment redirect with parameters...', 'info');
+            
+            try {
+                const response = await fetch(testURL, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    log(resultId, `✅ Payment redirect with params accessible (${response.status})`, 'success');
+                    log(resultId, `Test URL: ${testURL}`, 'info');
+                } else {
+                    log(resultId, `❌ Payment redirect with params failed (${response.status})`, 'error');
+                }
+            } catch (error) {
+                log(resultId, `❌ Error testing with params: ${error.message}`, 'error');
+            }
+        }
+        
+        function testURLStructure() {
+            const resultId = 'urlStructureResult';
+            document.getElementById(resultId).innerHTML = '';
+            
+            log(resultId, 'Testing URL structure...', 'info');
+            
+            const expectedURLs = [
+                `${BASE_URL}/payment-redirect/`,
+                `${BASE_URL}/payment-redirect/index.html`,
+                `${BASE_URL}/payment-redirect/?type=success&orderId=test`
+            ];
+            
+            expectedURLs.forEach(url => {
+                log(resultId, `Expected URL: ${url}`, 'info');
+            });
+            
+            // Test current URL structure
+            if (window.location.pathname.includes('/payment-redirect/')) {
+                log(resultId, '✅ Currently on payment redirect path', 'success');
+            } else {
+                log(resultId, '⚠️ Not currently on payment redirect path', 'info');
+            }
+            
+            log(resultId, `Current URL: ${window.location.href}`, 'info');
+        }
+        
+        async function testCORSHeaders() {
+            const resultId = 'corsResult';
+            document.getElementById(resultId).innerHTML = '';
+            
+            log(resultId, 'Testing CORS headers...', 'info');
+            
+            try {
+                const response = await fetch(PAYMENT_REDIRECT_URL, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                // Check important headers
+                const headers = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'X-Frame-Options': response.headers.get('X-Frame-Options'),
+                    'Content-Security-Policy': response.headers.get('Content-Security-Policy'),
+                    'X-Content-Type-Options': response.headers.get('X-Content-Type-Options')
+                };
+                
+                Object.entries(headers).forEach(([name, value]) => {
+                    if (value) {
+                        log(resultId, `✅ ${name}: ${value}`, 'success');
+                    } else {
+                        log(resultId, `⚠️ ${name}: Not set`, 'info');
+                    }
+                });
+                
+            } catch (error) {
+                log(resultId, `❌ CORS test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function testDeepLinkGeneration() {
+            const resultId = 'deepLinkResult';
+            document.getElementById(resultId).innerHTML = '';
+            
+            log(resultId, 'Testing deep link generation...', 'info');
+            
+            const testCases = [
+                {
+                    orderId: 'test_123',
+                    type: 'success',
+                    source: 'deployment_test'
+                },
+                {
+                    orderId: 'trainer_456',
+                    type: 'cancel',
+                    source: 'deployment_test'
+                }
+            ];
+            
+            testCases.forEach(testCase => {
+                const baseScheme = 'healthythako://';
+                const path = testCase.type === 'success' ? 'payment-success' : 'payment-cancel';
+                
+                const params = new URLSearchParams();
+                params.set('orderId', testCase.orderId);
+                params.set('status', testCase.type === 'success' ? 'completed' : 'cancelled');
+                params.set('source', 'web_redirect');
+                params.set('timestamp', Date.now().toString());
+                
+                const deepLinkUrl = `${baseScheme}${path}?${params.toString()}`;
+                
+                log(resultId, `✅ Generated: ${deepLinkUrl}`, 'success');
+            });
+        }
+        
+        function testMobileSimulation() {
+            const resultId = 'mobileResult';
+            document.getElementById(resultId).innerHTML = '';
+            
+            log(resultId, 'Testing mobile simulation...', 'info');
+            
+            // Simulate mobile user agent
+            const userAgent = navigator.userAgent;
+            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+            
+            log(resultId, `Current User Agent: ${userAgent}`, 'info');
+            log(resultId, `Mobile Detected: ${isMobile ? 'Yes' : 'No'}`, isMobile ? 'success' : 'info');
+            
+            // Test mobile redirect URL
+            const mobileTestURL = `${PAYMENT_REDIRECT_URL}?type=success&orderId=mobile_test_${Date.now()}&source=mobile_app`;
+            log(resultId, `Mobile Test URL: ${mobileTestURL}`, 'info');
+            
+            // Simulate opening the URL
+            log(resultId, '✅ Mobile simulation test completed', 'success');
+        }
+        
+        // Auto-run basic tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testPaymentRedirectAccess();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

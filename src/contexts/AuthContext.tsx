@@ -39,25 +39,26 @@ interface AuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
-  
+
   // Authentication methods
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, role: 'client' | 'trainer', name: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updatePassword: (password: string) => Promise<{ error: any }>;
-  
+
   // Admin authentication (unified)
   adminSignIn: (username: string, password: string) => Promise<{ error: any }>;
-  
+
   // Role management
   requestRoleChange: (newRole: 'client' | 'trainer' | 'gym_owner', additionalData?: any) => Promise<{ error: any }>;
   hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
   switchPrimaryRole: (role: 'client' | 'trainer' | 'gym_owner') => Promise<{ error: any }>;
-  
+
   // Session management
   refreshSession: () => Promise<void>;
+  refreshUserProfile: () => Promise<void>;
   isSessionValid: () => boolean;
 }
 
@@ -148,6 +149,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
       }
 
+      // Map database user_type to frontend role (user -> client)
+      const mapUserTypeToRole = (userType: string): 'client' | 'trainer' | 'gym_owner' | 'admin' => {
+        switch (userType) {
+          case 'user':
+            return 'client';
+          case 'trainer':
+            return 'trainer';
+          case 'gym_owner':
+            return 'gym_owner';
+          case 'admin':
+            return 'admin';
+          default:
+            return 'client'; // Default fallback
+        }
+      };
+
+      const mappedRole = mapUserTypeToRole(userData.user_type || 'user');
+
       // Create the UserProfile object with actual data from new schema
       const userProfile: UserProfile = {
         id: userData.id,
@@ -155,8 +174,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email: userData.email,
         name: userData.full_name || '', // Note: field name changed to full_name
         phone: userData.phone_number, // Note: field name changed to phone_number
-        primary_role: (userData.user_type || 'user') as 'client' | 'trainer' | 'gym_owner' | 'admin',
-        roles: [(userData.user_type || 'user') as 'client' | 'trainer' | 'gym_owner' | 'admin'], // For now, users have single roles
+        primary_role: mappedRole,
+        roles: [mappedRole], // For now, users have single roles
         permissions: [], // Can be expanded later
         is_active: !userData.anonymized, // Use anonymized field to determine if active
         is_verified: true, // Default to true for now
@@ -456,16 +475,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const { data, error } = await supabase.auth.refreshSession();
       if (error) throw error;
-      
+
       setSession(data.session);
       setUser(data.session?.user ?? null);
-        
+
       if (data.session?.user) {
         const userProfile = await fetchUserProfile(data.session.user.id);
           setProfile(userProfile);
       }
     } catch (error) {
       console.error('Refresh session error:', error);
+    }
+  };
+
+  // Force refresh user profile (useful after role mapping fixes)
+  const refreshUserProfile = async () => {
+    try {
+      if (user) {
+        console.log('Force refreshing user profile...');
+        const userProfile = await fetchUserProfile(user.id);
+        setProfile(userProfile);
+        console.log('User profile refreshed:', userProfile);
+      }
+    } catch (error) {
+      console.error('Refresh user profile error:', error);
     }
   };
 
@@ -490,6 +523,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasPermission,
     switchPrimaryRole,
     refreshSession,
+    refreshUserProfile,
     isSessionValid,
   };
 
