@@ -36,8 +36,34 @@ const ClientSidebar = () => {
   const location = useLocation();
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      console.log('ClientSidebar: Initiating signout...');
+
+      // Add loading state to prevent multiple clicks
+      const button = document.querySelector('[data-signout-button]');
+      if (button) {
+        button.textContent = 'Signing out...';
+        button.disabled = true;
+      }
+
+      // Call signOut which handles navigation
+      await signOut();
+      console.log('ClientSidebar: Signout completed');
+
+    } catch (error) {
+      console.error('ClientSidebar: Signout error:', error);
+
+      // Reset button state on error
+      const button = document.querySelector('[data-signout-button]');
+      if (button) {
+        button.textContent = 'Sign Out';
+        button.disabled = false;
+      }
+
+      // Fallback navigation
+      console.log('ClientSidebar: Using fallback navigation...');
+      window.location.href = '/';
+    }
   };
 
   const menuItems = [
@@ -94,10 +120,12 @@ const ClientSidebar = () => {
   ];
 
   const isActiveRoute = (url: string) => {
+    // Handle exact matches and nested routes
     if (url === "/client-dashboard") {
       return location.pathname === "/client-dashboard" || location.pathname === "/client-dashboard/";
     }
-    return location.pathname === url;
+    // For nested routes, check if current path starts with the URL
+    return location.pathname === url || location.pathname.startsWith(url + '/');
   };
 
   return (
@@ -135,7 +163,11 @@ const ClientSidebar = () => {
                         isActive && "bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200/50 shadow-sm text-pink-700 hover:bg-gradient-to-r hover:from-pink-50 hover:to-purple-50"
                       )}
                     >
-                      <Link to={item.url} className="flex items-center space-x-3 w-full">
+                      <Link
+                        to={item.url}
+                        className="flex items-center space-x-3 w-full"
+                        onClick={() => console.log('ClientSidebar: Navigating to:', item.url, 'from:', location.pathname)}
+                      >
                         <item.icon className={cn(
                           "h-4 w-4 flex-shrink-0 transition-colors",
                           isActive ? "text-pink-600" : "text-gray-500"
@@ -162,9 +194,10 @@ const ClientSidebar = () => {
       <SidebarFooter className="px-2 py-4 border-t border-gray-100 bg-gray-50">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton 
-              onClick={handleSignOut} 
+            <SidebarMenuButton
+              onClick={handleSignOut}
               size="sm"
+              data-signout-button
               className="w-full justify-start px-3 py-2.5 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
             >
               <LogOut className="h-4 w-4 flex-shrink-0" />

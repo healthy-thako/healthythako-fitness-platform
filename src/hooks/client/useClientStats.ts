@@ -14,20 +14,20 @@ export const useClientStats = () => {
         // Get all data in parallel for better performance
         const [bookingsResult, favoritesResult, reviewsResult, membershipsResult] = await Promise.all([
           supabase
-            .from('bookings')
-            .select('status, amount, order_type')
-            .eq('client_id', user.id),
+            .from('trainer_bookings')
+            .select('status, total_amount')
+            .eq('user_id', user.id),
           supabase
             .from('favorites')
             .select('id')
-            .eq('client_id', user.id),
+            .eq('user_id', user.id),
           supabase
             .from('reviews')
             .select('id')
-            .eq('reviewer_id', user.id),
+            .eq('user_id', user.id),
           supabase
-            .from('gym_member_purchases')
-            .select('id')
+            .from('gym_passes')
+            .select('id, status')
             .eq('user_id', user.id)
             .eq('status', 'active')
         ]);
@@ -49,11 +49,11 @@ export const useClientStats = () => {
           activeBookings: bookings.filter(b => ['confirmed', 'accepted', 'in_progress'].includes(b.status)).length,
           totalSpent: bookings
             .filter(b => b.status === 'completed')
-            .reduce((sum, b) => sum + (Number(b.amount) || 0), 0),
+            .reduce((sum, b) => sum + (Number(b.total_amount) || 0), 0),
           favoriteTrainers: favorites.length,
           reviewsGiven: reviews.length,
-          activeMemberships: memberships.length,
-          serviceOrders: bookings.filter(b => b.order_type === 'service').length
+          activeMemberships: memberships.filter(m => m.status === 'active').length,
+          serviceOrders: bookings.length // All trainer bookings are service orders
         };
 
         return stats;

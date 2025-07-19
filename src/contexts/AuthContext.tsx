@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, handleAuthError } from '@/integrations/supabase/client';
 
 // Enhanced user profile interface that consolidates all roles
 interface UserProfile {
@@ -32,6 +32,9 @@ interface UserProfile {
     username?: string;
     role: 'admin' | 'super_admin';
   };
+  // User profiles data
+  profile_data?: any;
+  user_profiles?: any;
 }
 
 interface AuthContextType {
@@ -44,6 +47,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, role: 'client' | 'trainer', name: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  forceSignOut: () => void;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updatePassword: (password: string) => Promise<{ error: any }>;
 
@@ -82,111 +86,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile with all role data - UPDATED for new database schema
+  // Ultra-simplified profile fetching for debugging
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      console.log('Fetching profile for user:', userId);
+      console.log('=== FETCHING PROFILE FOR USER:', userId, '===');
 
-      // First get the basic profile from users table (new schema)
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (userError) {
-        console.error('Error fetching user data:', userError);
+      // Create a minimal profile from auth user data
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser?.user) {
+        console.error('No auth user found');
         return null;
       }
 
-      console.log('User data:', userData);
+      console.log('✅ Creating minimal profile from auth data');
 
-      // Get role-specific data based on the user's type
-      let trainerData = null;
-      let gymOwnerData = null;
-      let adminData = null;
-
-      // Fetch trainer data if user is a trainer
-      if (userData.user_type === 'trainer') {
-        const { data: trainer } = await supabase
-          .from('trainers')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
-
-        if (trainer) {
-          trainerData = {
-            bio: trainer.bio,
-            specializations: trainer.specialties, // Note: field name changed
-            rate_per_hour: trainer.pricing ? (trainer.pricing as any)?.hourly_rate : null,
-            certifications: trainer.certifications
-          };
-        }
-      }
-
-      // Fetch gym owner data if user is a gym owner
-      if (userData.user_type === 'gym_owner') {
-        const { data: gymOwner } = await supabase
-          .from('gym_owner_profiles')
-          .select('*')
-          .eq('id', userId) // Note: different relationship in new schema
-          .single();
-
-        if (gymOwner) {
-          gymOwnerData = {
-            business_name: gymOwner.business_name,
-            business_license: gymOwner.business_registration_number
-          };
-        }
-      }
-
-      // Admin data handling (if needed)
-      if (userData.user_type === 'admin') {
-        // For now, just set basic admin data
-        adminData = {
-          username: userData.email, // Use email as username for now
-          role: 'admin'
-        };
-      }
-
-      // Map database user_type to frontend role (user -> client)
-      const mapUserTypeToRole = (userType: string): 'client' | 'trainer' | 'gym_owner' | 'admin' => {
-        switch (userType) {
-          case 'user':
-            return 'client';
-          case 'trainer':
-            return 'trainer';
-          case 'gym_owner':
-            return 'gym_owner';
-          case 'admin':
-            return 'admin';
-          default:
-            return 'client'; // Default fallback
-        }
-      };
-
-      const mappedRole = mapUserTypeToRole(userData.user_type || 'user');
-
-      // Create the UserProfile object with actual data from new schema
+      // Create minimal profile without database queries for now
       const userProfile: UserProfile = {
-        id: userData.id,
-        user_id: userData.id,
-        email: userData.email,
-        name: userData.full_name || '', // Note: field name changed to full_name
-        phone: userData.phone_number, // Note: field name changed to phone_number
-        primary_role: mappedRole,
-        roles: [mappedRole], // For now, users have single roles
-        permissions: [], // Can be expanded later
-        is_active: !userData.anonymized, // Use anonymized field to determine if active
-        is_verified: true, // Default to true for now
-        created_at: userData.created_at || new Date().toISOString(),
-        updated_at: userData.updated_at || new Date().toISOString(),
-        trainer_data: trainerData,
-        gym_owner_data: gymOwnerData,
-        admin_data: adminData
+        id: userId,
+        user_id: userId,
+        email: authUser.user.email || '',
+        name: authUser.user.user_metadata?.name || authUser.user.user_metadata?.full_name || 'User',
+        primary_role: (authUser.user.user_metadata?.role as any) || 'client',
+        roles: [(authUser.user.user_metadata?.role as any) || 'client'],
+        permissions: [],
+        is_active: true,
+        is_verified: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        profile_data: { profile_completed: false }
       };
 
-      console.log('Final user profile:', userProfile);
+      console.log('✅ MINIMAL PROFILE CREATED:', userProfile);
       return userProfile;
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
@@ -218,46 +148,136 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    // Set up auth state listener
+    // Set up auth state listener with error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
-        setSession(session);
-        setUser(session?.user ?? null);
 
-        if (session?.user) {
-          // Fetch profile using the actual database structure
-          const userProfile = await fetchUserProfile(session.user.id);
-          setProfile(userProfile);
-          
-          // Update last login
-          await updateLastLogin(session.user.id);
-          
-          // Log authentication event
-          await logAuthEvent('signin', { method: 'email' });
-        } else {
+        try {
+          setSession(session);
+          setUser(session?.user ?? null);
+
+          if (session?.user) {
+            console.log('Auth state change - user signed in:', session.user.id);
+
+            // For new users, ensure they exist in the database first
+            if (event === 'SIGNED_UP' || event === 'SIGNED_IN') {
+              console.log('Handling signup/signin event, ensuring user exists...');
+
+              try {
+                const userEmail = session.user.email || '';
+                const userName = session.user.user_metadata?.name ||
+                                session.user.user_metadata?.full_name ||
+                                userEmail.split('@')[0] || 'User';
+                const userType = session.user.user_metadata?.role || 'client';
+
+                await supabase.rpc('ensure_user_exists', {
+                  p_user_id: session.user.id,
+                  p_user_email: userEmail,
+                  p_user_name: userName,
+                  p_user_type: userType
+                });
+
+                console.log('User ensured in database during auth state change');
+              } catch (ensureError) {
+                console.warn('Error ensuring user exists during auth state change:', ensureError);
+              }
+            }
+
+            // Fetch profile using the actual database structure
+            const userProfile = await fetchUserProfile(session.user.id);
+            if (userProfile) {
+              setProfile(userProfile);
+              console.log('Profile set from auth state change:', userProfile.primary_role);
+            } else {
+              console.warn('Failed to fetch user profile during auth state change');
+              // If profile fetch fails, try again after a short delay
+              setTimeout(async () => {
+                console.log('Retrying profile fetch...');
+                const retryProfile = await fetchUserProfile(session.user.id);
+                if (retryProfile) {
+                  setProfile(retryProfile);
+                  console.log('Profile set on retry:', retryProfile.primary_role);
+                }
+              }, 2000);
+            }
+
+            // Update last login
+            try {
+              await updateLastLogin(session.user.id);
+            } catch (loginError) {
+              console.warn('Error updating last login:', loginError);
+            }
+
+            // Log authentication event
+            try {
+              await logAuthEvent('signin', { method: 'email' });
+            } catch (logError) {
+              console.warn('Error logging auth event:', logError);
+            }
+          } else {
+            console.log('Auth state change - user signed out');
+            setProfile(null);
+          }
+
+          // Handle password recovery
+          if (event === 'PASSWORD_RECOVERY') {
+            console.log('Password recovery event detected');
+          }
+
+          // Handle token refresh errors
+          if (event === 'TOKEN_REFRESHED') {
+            console.log('Token refreshed successfully');
+          }
+
+        } catch (error) {
+          console.error('Error in auth state change:', error);
+          // If there's an error, ensure we clear the state
+          setSession(null);
+          setUser(null);
           setProfile(null);
         }
-        
-        setLoading(false);
 
-        // Handle password recovery
-        if (event === 'PASSWORD_RECOVERY') {
-          console.log('Password recovery event detected');
-        }
+        setLoading(false);
       }
     );
 
-    // Get initial session
+    // Get initial session with error handling
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Initial session:', session?.user?.id);
-      
-      if (session?.user) {
-        setSession(session);
-        setUser(session.user);
-        const userProfile = await fetchUserProfile(session.user.id);
-        setProfile(userProfile);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Session error:', error);
+          // Use the utility function to handle auth errors
+          const handled = await handleAuthError(error);
+          if (handled) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+          }
+          setLoading(false);
+          return;
+        }
+
+        console.log('Initial session:', session?.user?.id);
+
+        if (session?.user) {
+          setSession(session);
+          setUser(session.user);
+          const userProfile = await fetchUserProfile(session.user.id);
+          setProfile(userProfile);
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error);
+        // Use the utility function to handle auth errors
+        const handled = await handleAuthError(error);
+        if (handled || error) {
+          // Clear invalid session data
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+        }
       }
       setLoading(false);
     };
@@ -270,17 +290,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      console.log('Starting sign in for:', email);
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      
+
       if (error) {
         console.error('Sign in error:', error);
         return { error };
       }
 
       console.log('Sign in successful:', data.user?.id);
+
+      // Ensure user profile is created/updated
+      if (data.user) {
+        try {
+          const userProfile = await fetchUserProfile(data.user.id);
+          if (userProfile) {
+            setProfile(userProfile);
+            console.log('User profile set after sign in:', userProfile.primary_role);
+          }
+        } catch (profileError) {
+          console.warn('Error fetching profile after sign in:', profileError);
+        }
+      }
+
       return { error: null };
     } catch (error) {
       console.error('Sign in exception:', error);
@@ -293,6 +329,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string, role: 'client' | 'trainer', name: string) => {
     try {
       setLoading(true);
+      console.log('Starting signup process for:', email, 'with role:', role);
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -300,20 +338,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           data: {
             role,
             name,
+            // Add more metadata to help with user creation
+            full_name: name,
+            display_name: name,
+            signup_timestamp: new Date().toISOString(),
           },
+          // Set email confirmation to true to prevent immediate sign-in
+          emailRedirectTo: window.location.origin + '/auth/callback',
         },
       });
-      
+
       if (error) {
         console.error('Sign up error:', error);
         return { error };
       }
 
       console.log('Sign up successful:', data.user?.id);
+
+      // If user is created and confirmed (no email confirmation required)
+      if (data.user && data.session) {
+        console.log('User signed up and confirmed, setting up profile...');
+
+        // Wait a bit for the trigger to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Ensure user exists in our database
+        try {
+          await supabase.rpc('ensure_user_exists', {
+            p_user_id: data.user.id,
+            p_user_email: email,
+            p_user_name: name,
+            p_user_type: role
+          });
+
+          console.log('User ensured in database');
+        } catch (ensureError) {
+          console.warn('Error ensuring user exists:', ensureError);
+        }
+
+        // Fetch and set the user profile
+        try {
+          const userProfile = await fetchUserProfile(data.user.id);
+          if (userProfile) {
+            setProfile(userProfile);
+            setUser(data.user);
+            setSession(data.session);
+            console.log('User profile set after signup:', userProfile.primary_role);
+          } else {
+            console.warn('Failed to fetch user profile after signup');
+          }
+        } catch (profileError) {
+          console.warn('Error fetching profile after signup:', profileError);
+        }
+      } else {
+        console.log('Email confirmation required for user:', data.user?.id);
+      }
+
       return { error: null };
     } catch (error) {
       console.error('Sign up exception:', error);
-      return { error };
+      // Provide more specific error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error during signup';
+      return { error: new Error(`Signup failed: ${errorMessage}`) };
     } finally {
       setLoading(false);
     }
@@ -354,17 +440,84 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const forceSignOut = () => {
+    console.log('AuthContext: Force signout - clearing state and redirecting...');
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+
+    // Clear any stored tokens
+    localStorage.removeItem('supabase.auth.token');
+    sessionStorage.clear();
+
+    // Simple, reliable redirect
+    console.log('AuthContext: Force signout - redirecting to homepage...');
+    window.location.href = '/';
+  };
+
   const signOut = async () => {
     try {
-      await logAuthEvent('signout');
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
+      console.log('AuthContext: Starting signout process...');
+
+      // Log the signout event (but don't let it block the process)
+      try {
+        await logAuthEvent('signout');
+      } catch (logError) {
+        console.warn('Failed to log signout event:', logError);
+      }
+
+      console.log('AuthContext: Calling Supabase signOut...');
+
+      // Add timeout to prevent hanging
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Signout timeout')), 5000)
+      );
+
+      try {
+        const { error } = await Promise.race([signOutPromise, timeoutPromise]);
+        if (error) {
+          console.error('Supabase signOut error:', error);
+          throw error;
+        }
+        console.log('AuthContext: Supabase signOut successful, clearing state...');
+      } catch (timeoutError) {
+        console.warn('AuthContext: Supabase signOut timed out or failed:', timeoutError);
+        console.log('AuthContext: Proceeding with local state cleanup...');
+        // Continue with local cleanup even if Supabase call fails
+      }
+
+      // Clear all auth state
       setUser(null);
       setProfile(null);
       setSession(null);
+
+      console.log('AuthContext: State cleared, redirecting to homepage...');
+
+      // Clear any cached data
+      localStorage.removeItem('supabase.auth.token');
+      sessionStorage.clear();
+
+      // Use window.location for reliable navigation after signout
+      console.log('AuthContext: Redirecting to homepage...');
+      window.location.href = '/';
+
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('AuthContext: Sign out error:', error);
+
+      // Even if there's an error, clear local state and redirect
+      console.log('AuthContext: Error occurred, forcing state clear and redirect...');
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+
+      // Clear any cached data
+      localStorage.removeItem('supabase.auth.token');
+      sessionStorage.clear();
+
+      // Force redirect even on error
+      console.log('AuthContext: Error fallback - redirecting to homepage...');
+      window.location.href = '/';
     }
   };
 
@@ -400,10 +553,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       if (!user) throw new Error('No authenticated user');
 
-      // Update the role in the profiles table
+      // Update the role in the users table
       const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
+        .from('users')
+        .update({ user_type: newRole })
         .eq('id', user.id);
 
       if (error) throw error;
@@ -411,8 +564,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Create role-specific profile if needed
       if (newRole === 'trainer') {
         await supabase
-          .from('trainer_profiles')
-          .insert({ user_id: user.id, ...additionalData })
+          .from('trainers')
+          .insert({
+            user_id: user.id,
+            name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Trainer',
+            contact_email: user.email,
+            ...additionalData
+          })
           .select()
           .single();
       } else if (newRole === 'gym_owner') {
@@ -421,8 +579,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .insert({
           user_id: user.id,
             email: user.email,
-            name: profile?.name,
-            ...additionalData 
+            name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Gym Owner',
+            ...additionalData
           })
           .select()
           .single();
@@ -455,8 +613,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Update primary role in database
       const { error } = await supabase
-        .from('profiles')
-        .update({ role: role })
+        .from('users')
+        .update({ user_type: role })
         .eq('id', user.id);
 
       if (error) throw error;
@@ -516,6 +674,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signUp,
     adminSignIn,
     signOut,
+    forceSignOut,
     resetPassword,
     updatePassword,
     requestRoleChange,

@@ -8,11 +8,34 @@ const RoleBasedRedirect: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('RoleBasedRedirect: Effect triggered', { loading, user: !!user, profile: !!profile });
+
     if (!loading && user && profile) {
       const role = profile.primary_role;
-      
+
       console.log('RoleBasedRedirect: User role detected as:', role);
-      
+      console.log('RoleBasedRedirect: Full profile:', profile);
+      console.log('RoleBasedRedirect: User ID:', user.id);
+
+      // Check if user has completed onboarding by checking profile_completed flag
+      const userProfileData = profile.user_profiles || profile.profile_data;
+      const hasCompletedOnboarding = userProfileData?.profile_completed === true ||
+        (role === 'admin'); // Admin doesn't need onboarding
+
+      console.log('✅ PROFILE COMPLETION CHECK:', {
+        hasCompletedOnboarding,
+        hasProfileData: !!userProfileData,
+        profileCompletedValue: userProfileData?.profile_completed,
+        role
+      });
+
+      // If user hasn't completed onboarding, redirect to onboarding
+      if (!hasCompletedOnboarding && role !== 'admin') {
+        console.log('RoleBasedRedirect: User needs to complete onboarding');
+        navigate('/onboarding', { replace: true });
+        return;
+      }
+
       // Redirect based on role
       if (role === 'trainer') {
         navigate('/trainer-dashboard', { replace: true });

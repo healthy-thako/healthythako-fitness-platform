@@ -14,7 +14,7 @@ export const useAdminBookings = (filters?: { status?: string; trainer_id?: strin
         {
           event: '*',
           schema: 'public',
-          table: 'bookings'
+          table: 'trainer_bookings'
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });

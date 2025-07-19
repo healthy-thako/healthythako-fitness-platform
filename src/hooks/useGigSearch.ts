@@ -24,7 +24,7 @@ export const useGigSearch = (filters: GigSearchFilters) => {
       const searchQuery = filters.search || '';
       const specialtyFilter = filters.category || '';
 
-      const { data: trainers, error } = await supabase.rpc('search_trainers', {
+      const { data: trainers, error } = await supabase.rpc('search_trainers_enhanced', {
         search_query: searchQuery,
         specialty_filter: specialtyFilter,
         gym_id_filter: null,

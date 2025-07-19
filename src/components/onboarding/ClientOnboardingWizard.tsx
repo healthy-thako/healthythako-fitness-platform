@@ -26,7 +26,7 @@ const ClientOnboardingWizard = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const { user } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
   const navigate = useNavigate();
 
   const totalSteps = 3;
@@ -38,23 +38,35 @@ const ClientOnboardingWizard = () => {
       if (!user) return;
 
       try {
-        // Fetch basic profile
-        const { data: profile } = await supabase
-          .from('profiles')
+        // Fetch basic profile from users table
+        const { data: userData } = await supabase
+          .from('users')
           .select('*')
           .eq('id', user.id)
           .single();
 
-        if (profile) {
+        // Fetch user_profiles data
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (userData || userProfile) {
           setFormData(prev => ({
             ...prev,
-            phone: profile.phone || '',
-            gender: profile.gender || '',
-            date_of_birth: profile.date_of_birth || '',
-            location: profile.location || ''
+            phone: userData?.phone_number || userProfile?.phone_number || userProfile?.phone || '',
+            gender: userProfile?.gender || '',
+            date_of_birth: userProfile?.date_of_birth || '',
+            location: userProfile?.location || '',
+            fitness_goals: userProfile?.fitness_goals?.join(', ') || '',
+            activity_level: userProfile?.activity_level || '',
+            preferred_workout_type: userProfile?.preferred_workout_type || '',
+            health_conditions: userProfile?.health_conditions?.join(', ') || userProfile?.medical_conditions?.join(', ') || '',
+            preferred_trainer_gender: userProfile?.preferred_trainer_gender || ''
           }));
 
-          console.log('Pre-populated client onboarding form with existing data:', profile);
+          console.log('Pre-populated client onboarding form with existing data:', { userData, userProfile });
         }
       } catch (error) {
         console.error('Error fetching existing profile data:', error);
@@ -82,23 +94,107 @@ const ClientOnboardingWizard = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('profiles')
+      console.log('Starting profile creation for user:', user.id);
+
+      // Check if profile already exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('user_profiles')
+        .select('user_id, profile_completed')
+        .eq('user_id', user.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 is "not found" error, which is expected for new users
+        console.error('Error checking existing profile:', checkError);
+        throw checkError;
+      }
+
+      console.log('Existing profile check:', existingProfile);
+
+      // Update users table
+      const { error: userError } = await supabase
+        .from('users')
         .update({
-          phone: formData.phone,
-          gender: formData.gender,
-          date_of_birth: formData.date_of_birth,
-          location: formData.location,
+          phone_number: formData.phone,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
 
-      if (error) throw error;
+      if (userError) throw userError;
 
+      // Update user_profiles table with proper field mapping
+      // Use upsert with explicit conflict resolution on user_id
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
+          phone_number: formData.phone,
+          phone: formData.phone, // Keep both for compatibility
+          gender: formData.gender,
+          date_of_birth: formData.date_of_birth || null,
+          location: formData.location,
+          fitness_goals: formData.fitness_goals ? formData.fitness_goals.split(',').map(g => g.trim()).filter(g => g) : [],
+          activity_level: formData.activity_level,
+          preferred_workout_type: formData.preferred_workout_type,
+          health_conditions: formData.health_conditions ? formData.health_conditions.split(',').map(h => h.trim()).filter(h => h) : [],
+          medical_conditions: formData.health_conditions ? formData.health_conditions.split(',').map(h => h.trim()).filter(h => h) : [], // Keep both for compatibility
+          preferred_trainer_gender: formData.preferred_trainer_gender,
+          profile_completed: true, // Mark profile as completed
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
+        });
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
+      }
+
+      console.log('Profile creation successful');
+
+      // Show success message first
       toast.success("Welcome to HealthyThako! Your profile has been set up successfully.");
-      navigate('/client-dashboard');
+
+      // Refresh the user profile in AuthContext to reflect the completed state
+      console.log('Refreshing user profile...');
+      await refreshUserProfile();
+
+      // Add a longer delay to ensure the profile state is fully updated
+      console.log('Waiting for profile state to update...');
+      setTimeout(async () => {
+        // Double-check that the profile is actually completed before navigating
+        const { data: verifyProfile } = await supabase
+          .from('user_profiles')
+          .select('profile_completed')
+          .eq('user_id', user.id)
+          .single();
+
+        console.log('Profile verification before navigation:', verifyProfile);
+
+        if (verifyProfile?.profile_completed) {
+          console.log('Profile confirmed as complete, navigating to client dashboard...');
+          navigate('/client-dashboard', { replace: true });
+        } else {
+          console.error('Profile still not marked as complete, staying on onboarding');
+          toast.error('Profile completion verification failed. Please try again.');
+        }
+      }, 3000);
     } catch (error: any) {
-      toast.error("Setup failed: " + error.message);
+      console.error('Complete profile creation error:', error);
+
+      // Provide specific error messages
+      if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+        toast.error("Profile already exists. Redirecting to dashboard...");
+        // If profile already exists, just redirect to dashboard
+        setTimeout(() => navigate('/client-dashboard'), 1500);
+      } else if (error.message?.includes('activity_level')) {
+        toast.error("Please select a valid activity level.");
+      } else if (error.message?.includes('gender')) {
+        toast.error("Please select a valid gender option.");
+      } else {
+        toast.error("Setup failed: " + error.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -135,6 +231,7 @@ const ClientOnboardingWizard = () => {
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -195,10 +292,10 @@ const ClientOnboardingWizard = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sedentary">Sedentary (little to no exercise)</SelectItem>
-                  <SelectItem value="light">Light (1-3 days/week)</SelectItem>
-                  <SelectItem value="moderate">Moderate (3-5 days/week)</SelectItem>
-                  <SelectItem value="active">Active (6-7 days/week)</SelectItem>
-                  <SelectItem value="very_active">Very Active (2x/day)</SelectItem>
+                  <SelectItem value="lightly_active">Lightly Active (1-3 days/week)</SelectItem>
+                  <SelectItem value="moderately_active">Moderately Active (3-5 days/week)</SelectItem>
+                  <SelectItem value="very_active">Very Active (6-7 days/week)</SelectItem>
+                  <SelectItem value="extremely_active">Extremely Active (2x/day)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -27,15 +27,52 @@ import {
   LogOut
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 const TrainerSidebar = () => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isActiveRoute = (url: string) => {
+    // Handle exact matches and nested routes
+    if (url === "/trainer-dashboard") {
+      return location.pathname === "/trainer-dashboard" || location.pathname === "/trainer-dashboard/";
+    }
+    // For nested routes, check if current path starts with the URL
+    return location.pathname === url || location.pathname.startsWith(url + '/');
+  };
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      console.log('TrainerSidebar: Initiating signout...');
+
+      // Add loading state to prevent multiple clicks
+      const button = document.querySelector('[data-signout-button]');
+      if (button) {
+        button.textContent = 'Signing out...';
+        button.disabled = true;
+      }
+
+      // Call signOut which handles navigation
+      await signOut();
+      console.log('TrainerSidebar: Signout completed');
+
+    } catch (error) {
+      console.error('TrainerSidebar: Signout error:', error);
+
+      // Reset button state on error
+      const button = document.querySelector('[data-signout-button]');
+      if (button) {
+        button.textContent = 'Sign Out';
+        button.disabled = false;
+      }
+
+      // Fallback navigation
+      console.log('TrainerSidebar: Using fallback navigation...');
+      window.location.href = '/';
+    }
   };
 
   const menuItems = [
@@ -114,16 +151,32 @@ const TrainerSidebar = () => {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="text-sm">
-                    <Link to={item.url} className="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems.map((item) => {
+                const isActive = isActiveRoute(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      className={cn(
+                        "text-sm transition-colors",
+                        isActive && "bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200/50 shadow-sm text-blue-700"
+                      )}
+                    >
+                      <Link to={item.url} className="flex items-center space-x-3 px-3 py-2 rounded-lg">
+                        <item.icon className={cn(
+                          "h-4 w-4",
+                          isActive ? "text-blue-600" : "text-gray-500"
+                        )} />
+                        <span className={cn(
+                          isActive ? "text-blue-700 font-medium" : "text-gray-700"
+                        )}>
+                          {item.title}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -132,7 +185,11 @@ const TrainerSidebar = () => {
       <SidebarFooter className="p-4 border-t border-gray-100">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={handleSignOut} className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full text-sm">
+            <SidebarMenuButton
+              onClick={handleSignOut}
+              data-signout-button
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full text-sm"
+            >
               <LogOut className="h-4 w-4" />
               <span>Sign Out</span>
             </SidebarMenuButton>

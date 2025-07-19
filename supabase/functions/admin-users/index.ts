@@ -68,13 +68,17 @@ serve(async (req) => {
 
     if (action === 'getBookings') {
       console.log('Fetching bookings with filters:', filters)
-      
+
       let query = supabase
-        .from('bookings')
+        .from('trainer_bookings')
         .select(`
           *,
-          client:profiles!client_id(name, email),
-          trainer:profiles!trainer_id(name, email)
+          client:users!trainer_bookings_user_id_fkey(full_name, email),
+          trainer:trainers!trainer_bookings_trainer_id_fkey(
+            name,
+            contact_email,
+            users!trainers_user_id_fkey(full_name, email)
+          )
         `)
         .order('created_at', { ascending: false })
 
@@ -110,9 +114,9 @@ serve(async (req) => {
 
     if (action === 'updateBooking') {
       console.log('Updating booking:', bookingId, updates)
-      
+
       const { data, error } = await supabase
-        .from('bookings')
+        .from('trainer_bookings')
         .update(updates)
         .eq('id', bookingId)
         .select()
@@ -131,9 +135,9 @@ serve(async (req) => {
 
     if (action === 'deleteBooking') {
       console.log('Deleting booking:', bookingId)
-      
+
       const { error } = await supabase
-        .from('bookings')
+        .from('trainer_bookings')
         .delete()
         .eq('id', bookingId)
 
@@ -252,12 +256,22 @@ serve(async (req) => {
 
     if (action === 'getUsers') {
       console.log('Fetching users with filters:', filters)
-      
+
       let query = supabase
-        .from('profiles')
+        .from('users')
         .select(`
           *,
-          trainer_profiles(is_verified, rate_per_hour, specializations, bio, experience_years)
+          user_profiles(*),
+          trainers(
+            id,
+            name,
+            bio,
+            experience,
+            pricing,
+            specialties,
+            status,
+            rating
+          )
         `)
         .order('created_at', { ascending: false })
 
@@ -285,9 +299,9 @@ serve(async (req) => {
 
     if (action === 'updateUser') {
       console.log('Updating user:', userId, updates)
-      
+
       const { data, error } = await supabase
-        .from('profiles')
+        .from('users')
         .update(updates)
         .eq('id', userId)
         .select()
@@ -318,7 +332,7 @@ serve(async (req) => {
       
       // First check if trainer profile exists
       const { data: trainerProfile, error: checkError } = await supabase
-        .from('trainer_profiles')
+        .from('trainers')
         .select('*')
         .eq('user_id', userId)
         .single()
@@ -333,8 +347,8 @@ serve(async (req) => {
 
       // Update trainer verification status
       const { error: trainerError } = await supabase
-        .from('trainer_profiles')
-        .update({ is_verified: true })
+        .from('trainers')
+        .update({ status: 'active' })
         .eq('user_id', userId)
 
       if (trainerError) {
@@ -362,8 +376,8 @@ serve(async (req) => {
       console.log('Suspending user:', userId)
       
       const { data, error } = await supabase
-        .from('profiles')
-        .update({ is_active: false })
+        .from('users')
+        .update({ user_type: 'suspended' })
         .eq('id', userId)
         .select()
         .single()

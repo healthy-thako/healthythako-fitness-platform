@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { APP_CONFIG, PAYMENT_CONFIG, MOBILE_CONFIG, debugLog, getPaymentUrls, getAppUrl, isMobileApp, isMobileDevice } from '@/config/env';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CreatePaymentParams {
   amount: number;
@@ -22,6 +23,8 @@ interface VerifyPaymentParams {
 }
 
 export const useCreatePayment = () => {
+  const { user } = useAuth();
+
   return useMutation({
     mutationFn: async (params: CreatePaymentParams) => {
       console.log('Creating payment with params:', params);
@@ -49,6 +52,7 @@ export const useCreatePayment = () => {
         cancel_url: params.cancel_url || paymentUrls.cancelUrl,
         metadata: {
           ...params.metadata,
+          user_id: user?.id, // Add user_id to metadata
           app_url: appUrl,
           redirect_url: paymentUrls.redirectUrl,
           success_url: paymentUrls.successUrl,

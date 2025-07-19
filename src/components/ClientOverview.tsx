@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const ClientOverview = () => {
+  console.log('ClientOverview component rendered!');
   const { data: stats, isLoading: statsLoading } = useClientStats();
   const { data: recentBookings, isLoading: bookingsLoading } = useClientBookings();
 

@@ -4,10 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface CreateReviewData {
-  booking_id: string;
-  reviewee_id: string;
+  trainer_id: string;
   rating: number;
   comment?: string;
+  booking_id?: string;
 }
 
 export const useCreateReview = () => {
@@ -17,12 +17,15 @@ export const useCreateReview = () => {
   return useMutation({
     mutationFn: async (reviewData: CreateReviewData) => {
       if (!user) throw new Error('User not authenticated');
-      
+
       const { data, error } = await supabase
-        .from('reviews')
+        .from('trainer_reviews')
         .insert({
-          ...reviewData,
-          reviewer_id: user.id
+          trainer_id: reviewData.trainer_id,
+          user_id: user.id,
+          rating: reviewData.rating,
+          comment: reviewData.comment,
+          booking_id: reviewData.booking_id
         })
         .select()
         .single();
@@ -32,6 +35,7 @@ export const useCreateReview = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['trainer-reviews'] });
       queryClient.invalidateQueries({ queryKey: ['trainer-stats'] });
     }
   });

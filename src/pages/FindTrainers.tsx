@@ -8,14 +8,18 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAddToFavorites, useRemoveFromFavorites, useClientFavorites } from '@/hooks/useClientData';
 import { useTrainerSearch, useTrainerSpecializations, TrainerSearchFilters } from '@/hooks/useTrainerSearch';
+import { useFallbackTrainerSearch } from '@/hooks/useFallbackTrainerSearch';
 import TrainerProfileCard from '@/components/TrainerProfileCard';
 import TrainerProfileModal from '@/components/TrainerProfileModal';
+import FallbackDebugPanel from '@/components/FallbackDebugPanel';
 import BookingModal from '@/components/BookingModal';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Aurora from '@/components/Aurora';
 import Breadcrumb from '@/components/Breadcrumb';
 import BlurText from '@/components/BlurText';
+
+
 import { Search, Filter, MapPin, Loader2, X, Star, Users, Zap, ArrowRight, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -45,6 +49,7 @@ const FindTrainers = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   // Debounce search query to avoid too many API calls
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -102,7 +107,8 @@ const FindTrainers = () => {
     searchFilters.priceRange = { min: 0, max: 800 };
   }
 
-  const { data: trainers, isLoading } = useTrainerSearch(searchFilters);
+  // Use fallback hook for immediate data loading
+  const { data: trainers, isLoading, error, isUsingFallback } = useFallbackTrainerSearch(searchFilters);
 
   // Update search params when filters change
   useEffect(() => {
@@ -284,7 +290,7 @@ const FindTrainers = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       {/* Hero Section with Aurora Background */}
       <section className="relative min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center overflow-hidden font-inter">
         {/* Aurora Background */}
@@ -555,7 +561,34 @@ const FindTrainers = () => {
         </div>
 
         {/* Trainers Grid - 4 columns as requested */}
-        {isLoading ? (
+        {error ? (
+          <Card className="text-center py-20">
+            <CardContent>
+              <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-8">
+                <span className="text-yellow-600 text-4xl">⚠️</span>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-3">Connection Issue</h3>
+              <p className="text-gray-600 mb-8 text-lg">
+                We're experiencing connectivity issues. Showing sample trainer profiles to demonstrate functionality.
+              </p>
+              <div className="space-y-3">
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="bg-pink-600 hover:bg-pink-700 px-8 py-3 text-lg mr-4"
+                >
+                  Try Again
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/connection-test')}
+                  className="px-8 py-3 text-lg"
+                >
+                  Test Connection
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="h-16 w-16 animate-spin text-pink-600 mb-6" />
             <p className="text-gray-600 text-xl">Finding the best trainers for you...</p>
@@ -574,8 +607,32 @@ const FindTrainers = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {trainers?.map((trainer) => (
+          <>
+            {/* Fallback Data Notice */}
+            {isUsingFallback && trainers && trainers.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-blue-600 text-sm">ℹ️</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-blue-800">Demo Mode Active</h4>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Currently showing sample trainer profiles due to connectivity issues.
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="ml-2 underline hover:no-underline"
+                      >
+                        Try refreshing
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {trainers?.map((trainer) => (
               <TrainerProfileCard
                 key={trainer.id}
                 trainer={{
@@ -596,7 +653,8 @@ const FindTrainers = () => {
                 isFavorited={favorites?.some(fav => fav.id === trainer.id)}
               />
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
 
@@ -696,7 +754,7 @@ const FindTrainers = () => {
                 <div className="text-sm text-gray-600">Happy Clients</div>
               </div>
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-gray-900 mb-1">₹15K+</div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">৳15K+</div>
                 <div className="text-sm text-gray-600">Avg. Monthly Earnings</div>
               </div>
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -744,6 +802,18 @@ const FindTrainers = () => {
           onMessage={() => handleMessage(selectedTrainer.id)}
         />
       )}
+
+      {/* Debug Panel */}
+      <FallbackDebugPanel
+        isVisible={showDebugPanel}
+        onToggle={() => setShowDebugPanel(!showDebugPanel)}
+        trainersData={{
+          data: trainers || [],
+          isLoading,
+          error,
+          isUsingFallback
+        }}
+      />
     </div>
   );
 };

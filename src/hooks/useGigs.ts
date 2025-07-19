@@ -40,38 +40,41 @@ export const usePublicGigs = (filters?: {
 
         if (!gigs || gigs.length === 0) return [];
 
-        // Get trainer profiles for all gigs
+        // Get trainer data for all gigs using the correct schema
         const trainerIds = [...new Set(gigs.map(gig => gig.trainer_id))];
-        
-        const { data: trainerProfiles, error: trainersError } = await supabase
-          .from('trainer_profiles')
-          .select('user_id, rate_per_hour, specializations, profile_image')
-          .in('user_id', trainerIds);
 
-        if (trainersError) console.error('Error fetching trainer profiles:', trainersError);
-
-        const { data: userProfiles, error: userProfilesError } = await supabase
-          .from('profiles')
-          .select('id, name, email')
+        const { data: trainers, error: trainersError } = await supabase
+          .from('trainers')
+          .select(`
+            id,
+            user_id,
+            name,
+            image_url,
+            specialties,
+            pricing,
+            users!trainers_user_id_fkey(full_name, email)
+          `)
           .in('id', trainerIds);
 
-        if (userProfilesError) console.error('Error fetching user profiles:', userProfilesError);
+        if (trainersError) console.error('Error fetching trainers:', trainersError);
 
         // Map gigs with trainer data
         return gigs.map(gig => {
-          const trainerProfile = trainerProfiles?.find(tp => tp.user_id === gig.trainer_id);
-          const userProfile = userProfiles?.find(up => up.id === gig.trainer_id);
-          
+          const trainer = trainers?.find(t => t.id === gig.trainer_id);
+
           return {
             ...gig,
             trainer: {
               id: gig.trainer_id,
-              rate_per_hour: trainerProfile?.rate_per_hour || 0,
-              specializations: trainerProfile?.specializations || [],
-              profile_image: trainerProfile?.profile_image,
+              user_id: trainer?.user_id,
+              name: trainer?.name || trainer?.users?.full_name || 'Unknown Trainer',
+              email: trainer?.users?.email || '',
+              rate_per_hour: trainer?.pricing?.hourly_rate || 0,
+              specializations: trainer?.specialties || [],
+              profile_image: trainer?.image_url,
               profile: {
-                name: userProfile?.name || 'Unknown Trainer',
-                email: userProfile?.email || ''
+                name: trainer?.name || trainer?.users?.full_name || 'Unknown Trainer',
+                email: trainer?.users?.email || ''
               }
             }
           };

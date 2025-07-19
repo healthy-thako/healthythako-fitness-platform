@@ -5,20 +5,33 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export const useClientProfile = () => {
   const { user } = useAuth();
-  
+
   return useQuery({
     queryKey: ['client-profile', user?.id],
     queryFn: async () => {
       if (!user) throw new Error('No user');
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
 
-      if (error) throw error;
-      return data;
+      // Get both user data and user_profiles data
+      const [userResult, profileResult] = await Promise.all([
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single(),
+        supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+      ]);
+
+      if (userResult.error && userResult.error.code !== 'PGRST116') throw userResult.error;
+      if (profileResult.error && profileResult.error.code !== 'PGRST116') throw profileResult.error;
+
+      return {
+        user: userResult.data,
+        profile: profileResult.data
+      };
     },
     enabled: !!user
   });
@@ -67,6 +80,9 @@ export const useUpdateClientProfile = () => {
             user_id: user.id,
             ...profileUpdates,
             updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id',
+            ignoreDuplicates: false
           });
 
         if (profileError) console.warn('Profile update warning:', profileError);

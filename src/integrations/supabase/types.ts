@@ -596,6 +596,47 @@ export type Database = {
           gym_address: string
         }[]
       }
+      search_trainers_enhanced: {
+        Args: {
+          search_query?: string
+          specialty_filter?: string
+          gym_id_filter?: string
+          min_rating?: number
+          limit_count?: number
+          offset_count?: number
+        }
+        Returns: {
+          id: string
+          name: string
+          email: string
+          location: string
+          trainer_profiles: Json
+          average_rating: string
+          total_reviews: number
+          completed_bookings: number
+        }[]
+      }
+      get_trainer_with_profile: {
+        Args: {
+          trainer_user_id: string
+        }
+        Returns: {
+          id: string
+          name: string
+          email: string
+          location: string
+          trainer_profiles: Json
+          average_rating: string
+          total_reviews: number
+          completed_bookings: number
+        }
+      }
+      get_gym_with_details: {
+        Args: {
+          gym_id: string
+        }
+        Returns: Json
+      }
       search_gyms: {
         Args: {
           search_query?: string

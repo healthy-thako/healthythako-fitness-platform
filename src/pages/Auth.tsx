@@ -17,7 +17,7 @@ import UpdatePasswordForm from '@/components/UpdatePasswordForm';
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signUp, user, loading, resetPassword, updatePassword } = useAuth();
+  const { signIn, signUp, user, profile, loading, resetPassword, updatePassword } = useAuth();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -35,6 +35,12 @@ const Auth = () => {
 
   useEffect(() => {
     if (user && !loading && !isPasswordRecovery) {
+      console.log('Auth: User logged in, redirecting to dashboard:', {
+        user: !!user,
+        loading,
+        isPasswordRecovery,
+        userId: user?.id
+      });
       navigate('/dashboard');
     }
   }, [user, loading, navigate, isPasswordRecovery]);
@@ -44,11 +50,20 @@ const Auth = () => {
     const urlParams = new URLSearchParams(location.search);
     const accessToken = urlParams.get('access_token');
     const type = urlParams.get('type');
-    
+
     if (accessToken && type === 'recovery') {
       setIsPasswordRecovery(true);
     }
   }, [location]);
+
+  // Debug: Log auth state changes
+  useEffect(() => {
+    console.log('Auth page - User state:', {
+      user: user?.id,
+      profile: profile?.primary_role,
+      loading
+    });
+  }, [user, profile, loading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,8 +72,10 @@ const Auth = () => {
     const { error } = await signIn(loginForm.email, loginForm.password);
     
     if (error) {
+      console.error('Login error:', error);
       toast.error(error.message || 'Login failed');
     } else {
+      console.log('Login successful, navigating to dashboard');
       toast.success('Login successful!');
       navigate('/dashboard');
     }
@@ -68,7 +85,7 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (signupForm.password !== signupForm.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -81,26 +98,59 @@ const Auth = () => {
 
     setIsSubmitting(true);
 
-    const { error } = await signUp(
-      signupForm.email,
-      signupForm.password,
-      signupForm.role,
-      signupForm.name
-    );
-    
-    if (error) {
-      toast.error(error.message || 'Signup failed');
-    } else {
-      toast.success('Account created successfully! Please check your email to verify your account.');
-      setSignupForm({
-        email: '',
-        password: '',
-        confirmPassword: '',
-        name: '',
-        role: 'client'
-      });
+    try {
+      console.log('Starting signup for:', signupForm.email, 'with role:', signupForm.role);
+
+      const { error } = await signUp(
+        signupForm.email,
+        signupForm.password,
+        signupForm.role,
+        signupForm.name
+      );
+
+      if (error) {
+        console.error('Signup error:', error);
+        toast.error(error.message || 'Signup failed');
+      } else {
+        console.log('Signup successful, checking user state...');
+
+        // Check if user is now authenticated
+        if (user) {
+          console.log('User is authenticated after signup, redirecting to dashboard...');
+          toast.success('Account created successfully! Redirecting to dashboard...');
+
+          // Clear form
+          setSignupForm({
+            email: '',
+            password: '',
+            confirmPassword: '',
+            name: '',
+            role: 'client'
+          });
+
+          // Redirect to dashboard after a short delay
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 1500);
+        } else {
+          console.log('User not authenticated after signup, email confirmation may be required');
+          toast.success('Account created successfully! Please check your email to verify your account.');
+
+          // Clear form
+          setSignupForm({
+            email: '',
+            password: '',
+            confirmPassword: '',
+            name: '',
+            role: 'client'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Signup exception:', error);
+      toast.error('An unexpected error occurred during signup. Please try again.');
     }
-    
+
     setIsSubmitting(false);
   };
 

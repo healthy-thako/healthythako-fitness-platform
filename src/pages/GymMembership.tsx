@@ -13,15 +13,16 @@ import Footer from '@/components/Footer';
 import Aurora from '@/components/Aurora';
 import Breadcrumb from '@/components/Breadcrumb';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { 
-  Search, 
-  MapPin, 
-  Star, 
-  Clock, 
-  Phone, 
-  Dumbbell, 
-  Eye, 
-  CreditCard, 
+
+import {
+  Search,
+  MapPin,
+  Star,
+  Clock,
+  Phone,
+  Dumbbell,
+  Eye,
+  CreditCard,
   Users,
   Filter,
   X,
@@ -32,9 +33,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useGyms, type Gym } from '@/hooks/useGyms';
+import { useGyms, useMembershipPlans, type Gym } from '@/hooks/useGyms';
+import { useFallbackGyms } from '@/hooks/useFallbackGyms';
 import GymCard from '@/components/GymCard';
-import { useAllGymMembershipPlans } from '@/hooks/useGymMembershipPlans';
+import FallbackDebugPanel from '@/components/FallbackDebugPanel';
+
+
 
 interface GymFilters {
   search: string;
@@ -59,6 +63,7 @@ const GymMembership = () => {
   const [minRating, setMinRating] = useState(0);
   const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   // Debounce search query to avoid too many API calls
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
@@ -87,20 +92,15 @@ const GymMembership = () => {
     { name: 'Premium Facilities', value: 'premium', icon: Award },
   ];
 
-  const { data: gymsData, isLoading: isLoadingGyms, error: gymsError } = useGyms();
-  const { data: allMembershipPlans, isLoading: isLoadingPlans } = useAllGymMembershipPlans();
+  // Use fallback hook for immediate data loading
+  const { data: gymsData, isLoading: isLoadingGyms, error: gymsError, isUsingFallback } = useFallbackGyms();
+  const { data: allMembershipPlans, isLoading: isLoadingPlans } = useMembershipPlans();
 
   const isLoading = isLoadingGyms || isLoadingPlans;
   const error = gymsError;
 
-  // Debug logging
-  console.log('GymMembership Debug:', { 
-    gyms: gymsData, 
-    isLoading, 
-    error, 
-    gymsLength: gymsData?.length,
-    membershipPlans: allMembershipPlans
-  });
+  // Data is ready when gyms are loaded
+  const isDataReady = !isLoading && gymsData && gymsData.length > 0;
 
   useEffect(() => {
     if (gymsData) {
@@ -200,10 +200,39 @@ const GymMembership = () => {
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Gyms</h2>
-            <p className="text-gray-600 mb-4">{error.message}</p>
-            <Button onClick={() => window.location.reload()}>Retry</Button>
+          <div className="max-w-md mx-auto text-center">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <span className="text-yellow-600 text-2xl">⚠️</span>
+                </div>
+              </div>
+              <h2 className="text-xl font-bold text-yellow-800 mb-3">Connection Issue</h2>
+              <p className="text-yellow-700 text-sm mb-4">
+                We're experiencing connectivity issues with our servers. The app is now showing sample gym data to demonstrate functionality.
+              </p>
+              <div className="space-y-2">
+                <Button
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  🔄 Retry Loading
+                </Button>
+                <Button
+                  onClick={() => window.open('/connection-test', '_blank')}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  🔍 Test Connection
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">
+              Error details: {error.message}
+            </p>
           </div>
         </div>
         <Footer />
@@ -214,7 +243,7 @@ const GymMembership = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       {/* Hero Section with Aurora Background */}
       <section className="relative min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center overflow-hidden font-inter">
         {/* Aurora Background */}
@@ -396,16 +425,66 @@ const GymMembership = () => {
 
         {/* Gyms Grid */}
         <section className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-8 sm:py-12">
-          {isLoading ? (
+          {/* Fallback Data Notice */}
+          {isUsingFallback && !isLoading && filteredGyms.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center">
+                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                  <span className="text-blue-600 text-sm">ℹ️</span>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-blue-800">Demo Mode Active</h4>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Currently showing sample gym listings due to connectivity issues.
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="underline ml-1 hover:text-blue-800"
+                    >
+                      Try refreshing
+                    </button> to load live data.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {gymsError && !isUsingFallback ? (
+            <Card className="text-center py-20">
+              <CardContent>
+                <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <span className="text-yellow-600 text-4xl">⚠️</span>
+                </div>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-3">Connection Issue</h3>
+                <p className="text-gray-600 mb-8 text-lg">
+                  We're experiencing connectivity issues. Showing sample gym listings to demonstrate functionality.
+                </p>
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => window.location.reload()}
+                    className="bg-pink-600 hover:bg-pink-700 px-8 py-3 text-lg mr-4"
+                  >
+                    Try Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/connection-test')}
+                    className="px-8 py-3 text-lg"
+                  >
+                    Test Connection
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-20">
               <LoadingSpinner size="lg" />
             </div>
           ) : filteredGyms.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredGyms.map((gym) => (
-                <GymCard 
-                  key={gym.id} 
-                  gym={gym} 
+                <GymCard
+                  key={gym.id}
+                  gym={gym}
                   onJoinClick={handleJoinGym}
                   onViewDetails={handleViewGymDetails}
                   onFavorite={handleFavoriteGym}
@@ -437,6 +516,18 @@ const GymMembership = () => {
       </main>
       
       <Footer />
+
+      {/* Debug Panel */}
+      <FallbackDebugPanel
+        isVisible={showDebugPanel}
+        onToggle={() => setShowDebugPanel(!showDebugPanel)}
+        gymsData={{
+          data: gymsData || [],
+          isLoading: isLoadingGyms,
+          error: gymsError,
+          isUsingFallback
+        }}
+      />
     </div>
   );
 };

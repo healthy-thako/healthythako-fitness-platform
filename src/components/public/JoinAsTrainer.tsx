@@ -34,7 +34,7 @@ const JoinAsTrainer = () => {
 
   const stats = [
     { number: "500+", label: "Active Trainers" },
-    { number: "₹50K+", label: "Avg Monthly Earning" },
+    { number: "৳50K+", label: "Avg Monthly Earning" },
     { number: "4.9★", label: "Trainer Rating" },
     { number: "95%", label: "Client Retention" }
   ];

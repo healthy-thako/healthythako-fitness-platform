@@ -14,7 +14,7 @@ export const useAdminTransactions = (filters?: { status?: string; trainer_id?: s
         {
           event: '*',
           schema: 'public',
-          table: 'transactions'
+          table: 'payment_transactions'
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['admin-transactions'] });
@@ -33,13 +33,17 @@ export const useAdminTransactions = (filters?: { status?: string; trainer_id?: s
       console.log('Fetching admin transactions with filters:', filters);
       
       let query = supabase
-        .from('transactions')
+        .from('payment_transactions')
         .select(`
           *,
-          booking:bookings(title, description),
-          trainer:profiles!trainer_id(name, email)
+          user:users!payment_transactions_user_id_fkey(full_name, email),
+          trainer:trainers!payment_transactions_trainer_id_fkey(
+            name,
+            contact_email,
+            users!trainers_user_id_fkey(full_name, email)
+          )
         `)
-        .order('transaction_date', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (filters?.status) {
         query = query.eq('status', filters.status);
@@ -65,7 +69,7 @@ export const useAdminTransactions = (filters?: { status?: string; trainer_id?: s
             break;
         }
         
-        query = query.gte('transaction_date', startDate.toISOString());
+        query = query.gte('created_at', startDate.toISOString());
       }
 
       const { data, error } = await query;

@@ -20,7 +20,7 @@ export const useAdminUsers = (filters: AdminUsersFilters = {}) => {
         {
           event: '*',
           schema: 'public',
-          table: 'profiles'
+          table: 'users'
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -31,7 +31,7 @@ export const useAdminUsers = (filters: AdminUsersFilters = {}) => {
         {
           event: '*',
           schema: 'public',
-          table: 'trainer_profiles'
+          table: 'trainers'
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['admin-users'] });

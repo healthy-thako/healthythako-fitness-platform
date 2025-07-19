@@ -37,7 +37,7 @@ const PaymentProtectedRoute: React.FC<PaymentProtectedRouteProps> = ({
           // Validate booking exists if bookingId provided
           if (bookingId) {
             const { data: booking, error } = await supabase
-              .from('bookings')
+              .from('trainer_bookings')
               .select('id, status')
               .eq('id', bookingId)
               .single();
@@ -53,7 +53,7 @@ const PaymentProtectedRoute: React.FC<PaymentProtectedRouteProps> = ({
           // Validate transaction exists if transactionId provided
           if (transactionId) {
             const { data: transaction, error } = await supabase
-              .from('transactions')
+              .from('payment_transactions')
               .select('id, status')
               .eq('id', transactionId)
               .single();

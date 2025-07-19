@@ -16,6 +16,8 @@ import PaymentProtectedRoute from '@/components/PaymentProtectedRoute';
 import ProfileProtectedRoute from '@/components/ProfileProtectedRoute';
 import RoleBasedRedirect from '@/components/RoleBasedRedirect';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import AuthErrorHandler from '@/components/AuthErrorHandler';
+import SessionDebugger from '@/components/SessionDebugger';
 import BrandLoadingSpinner from '@/components/BrandLoadingSpinner';
 
 // Lazy load pages for better performance
@@ -44,8 +46,7 @@ const MVPStatus = lazy(() => import('@/pages/MVPStatus'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const Onboarding = lazy(() => import('@/pages/Onboarding'));
 
-// Migration test component
-const MigrationTest = lazy(() => import('@/components/MigrationTest'));
+// Debug components are now minimal and only render in development
 
 const Support = lazy(() => import('@/pages/Support'));
 const RefundPolicy = lazy(() => import('@/pages/RefundPolicy'));
@@ -57,10 +58,32 @@ const GymPass = lazy(() => import('@/pages/GymPass'));
 const Blog = lazy(() => import('@/pages/Blog'));
 const BlogPost = lazy(() => import('@/pages/BlogPost'));
 
-// Test components
-const PaymentTest = lazy(() => import('@/components/PaymentTest'));
-const EnvironmentSetup = lazy(() => import('@/components/EnvironmentSetup'));
-const AuthDiagnostic = lazy(() => import('@/components/AuthDiagnostic'));
+// Test components removed - only essential debug components remain
+const ConnectionTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
+  ? lazy(() => import('@/pages/ConnectionTest'))
+  : null;
+const RoutingTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
+  ? lazy(() => import('@/pages/RoutingTest'))
+  : null;
+const LinkingTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
+  ? lazy(() => import('@/pages/LinkingTest'))
+  : null;
+const DirectLinkTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
+  ? lazy(() => import('@/pages/DirectLinkTest'))
+  : null;
+const BypassTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
+  ? lazy(() => import('@/pages/BypassTest'))
+  : null;
+const AuthTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
+  ? lazy(() => import('@/pages/AuthTest'))
+  : null;
+const BasicAuthTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
+  ? lazy(() => import('@/pages/BasicAuthTest'))
+  : null;
+
+// Deployment test component - Always available for debugging deployment issues
+const DeploymentTest = lazy(() => import('@/components/DeploymentTest'));
+// Removed test components
 
 // Dashboard pages
 const TrainerDashboard = lazy(() => import('@/pages/TrainerDashboard'));
@@ -96,7 +119,8 @@ function App() {
       <Router>
         <AuthProvider>
           <ConversationProvider>
-            <ErrorBoundary>
+            <AuthErrorHandler>
+              <ErrorBoundary>
                 <div className="min-h-screen bg-background">
                   <Routes>
                     {/* Public routes */}
@@ -126,16 +150,12 @@ function App() {
                     <Route path="/blog" element={<PageWrapper><Blog /></PageWrapper>} />
                     <Route path="/blog/:slug" element={<PageWrapper><BlogPost /></PageWrapper>} />
                     
-                    {/* Protected profile routes */}
+                    {/* Protected profile routes - TEMPORARILY BYPASSED FOR TESTING */}
                     <Route path="/trainer/:trainerId" element={
-                      <ProfileProtectedRoute type="trainer">
-                        <PageWrapper><PublicTrainerProfile /></PageWrapper>
-                      </ProfileProtectedRoute>
+                      <PageWrapper><PublicTrainerProfile /></PageWrapper>
                     } />
                     <Route path="/gym/:gymId" element={
-                      <ProfileProtectedRoute type="gym">
-                        <PageWrapper><PublicGymProfile /></PageWrapper>
-                      </ProfileProtectedRoute>
+                      <PageWrapper><PublicGymProfile /></PageWrapper>
                     } />
                     
                     {/* Protected booking flow */}
@@ -172,6 +192,22 @@ function App() {
                     <Route path="/join-gym" element={<PageWrapper><JoinGym /></PageWrapper>} />
                     <Route path="/join-trainer" element={<PageWrapper><JoinTrainer /></PageWrapper>} />
                     <Route path="/gympass" element={<PageWrapper><GymPass /></PageWrapper>} />
+
+                    {/* Auth Test Route - Development only */}
+                    {AuthTest && (
+                      <Route path="/auth-test" element={
+                        <Suspense fallback={<BrandLoadingSpinner />}>
+                          <PageWrapper><AuthTest /></PageWrapper>
+                        </Suspense>
+                      } />
+                    )}
+
+                    {/* Deployment Test Route - Always available for debugging */}
+                    <Route path="/deployment-test" element={
+                      <Suspense fallback={<BrandLoadingSpinner />}>
+                        <PageWrapper><DeploymentTest /></PageWrapper>
+                      </Suspense>
+                    } />
 
                     {/* Onboarding route - requires authentication */}
                     <Route path="/onboarding" element={
@@ -222,24 +258,17 @@ function App() {
                       </AdminProtectedRoute>
                     } />
 
-                    {/* Migration test route */}
-                    <Route path="/migration-test" element={<PageWrapper><MigrationTest /></PageWrapper>} />
-
-                    {/* Payment test route */}
-                    <Route path="/payment-test" element={<PageWrapper><PaymentTest /></PageWrapper>} />
-
-                    {/* Environment setup route */}
-                    <Route path="/environment-setup" element={<PageWrapper><EnvironmentSetup /></PageWrapper>} />
-
-                    {/* Auth diagnostic route */}
-                    <Route path="/auth-diagnostic" element={<PageWrapper><AuthDiagnostic /></PageWrapper>} />
+                    {/* Debug/Test routes - Removed for production readiness */}
 
                     {/* 404 route */}
                     <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
                   </Routes>
                 </div>
                 <Toaster />
+                {/* Session Debugger - Only in development with debug logs enabled */}
+                {import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true' && <SessionDebugger />}
               </ErrorBoundary>
+            </AuthErrorHandler>
             </ConversationProvider>
         </AuthProvider>
       </Router>

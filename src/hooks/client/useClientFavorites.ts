@@ -30,30 +30,31 @@ export const useClientFavorites = () => {
     enabled: !!user
   });
 
-  // Set up real-time subscription
+  // Real-time subscription - Temporarily disabled to fix WebSocket issues
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel('client-favorites-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'favorites',
-          filter: `client_id=eq.${user.id}`
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['client-favorites'] });
-          queryClient.invalidateQueries({ queryKey: ['client-stats'] });
-        }
-      )
-      .subscribe();
+    // TODO: Re-enable realtime subscriptions after fixing WebSocket connection issues
+    // const channel = supabase
+    //   .channel('client-favorites-changes')
+    //   .on(
+    //     'postgres_changes',
+    //     {
+    //       event: '*',
+    //       schema: 'public',
+    //       table: 'favorites',
+    //       filter: `client_id=eq.${user.id}`
+    //     },
+    //     () => {
+    //       queryClient.invalidateQueries({ queryKey: ['client-favorites'] });
+    //       queryClient.invalidateQueries({ queryKey: ['client-stats'] });
+    //     }
+    //   )
+    //   .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // return () => {
+    //   supabase.removeChannel(channel);
+    // };
   }, [user, queryClient]);
 
   return query;

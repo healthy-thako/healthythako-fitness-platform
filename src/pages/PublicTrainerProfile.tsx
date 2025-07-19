@@ -7,10 +7,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTrainerDetails } from '@/hooks/useTrainerSearch';
+import { useFallbackTrainerDetails } from '@/hooks/useFallbackTrainerDetails';
 import BookingModal from '@/components/BookingModal';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import FallbackDebugPanel from '@/components/FallbackDebugPanel';
 import Breadcrumb from '@/components/Breadcrumb';
 import { Star, MapPin, CheckCircle, MessageSquare, Calendar, Award, Users, ArrowLeft, Phone, Mail, Clock, Heart, Share2, Video, Home, MapPinIcon, Zap, DollarSign, Target, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
@@ -22,8 +24,10 @@ const PublicTrainerProfile = () => {
   const { user } = useAuth();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
-  const { data: trainer, isLoading, error } = useTrainerDetails(trainerId || '');
+  // Use fallback hook for immediate data loading
+  const { data: trainer, isLoading, error, isUsingFallback } = useFallbackTrainerDetails(trainerId || '');
 
   console.log('PublicTrainerProfile - Trainer ID:', trainerId);
   console.log('PublicTrainerProfile - Trainer Data:', trainer);
@@ -126,6 +130,29 @@ const PublicTrainerProfile = () => {
             { label: trainer.name, current: true }
           ]}
         />
+
+        {/* Fallback Data Notice */}
+        {isUsingFallback && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center">
+              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                <span className="text-blue-600 text-sm">ℹ️</span>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-medium text-blue-800">Demo Profile</h4>
+                <p className="text-xs text-blue-600 mt-1">
+                  Currently showing sample trainer profile due to connectivity issues.
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="ml-2 underline hover:no-underline"
+                  >
+                    Try refreshing
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Trainer Header */}
         <Card className="mb-8">
@@ -454,6 +481,18 @@ const PublicTrainerProfile = () => {
       )}
 
       <Footer />
+
+      {/* Debug Panel */}
+      <FallbackDebugPanel
+        isVisible={showDebugPanel}
+        onToggle={() => setShowDebugPanel(!showDebugPanel)}
+        trainersData={{
+          data: trainer ? [trainer] : [],
+          isLoading,
+          error,
+          isUsingFallback
+        }}
+      />
     </div>
   );
 };

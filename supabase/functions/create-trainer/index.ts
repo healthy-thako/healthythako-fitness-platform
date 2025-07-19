@@ -52,14 +52,13 @@ serve(async (req) => {
     // Wait a moment for the trigger to create the profile
     await new Promise(resolve => setTimeout(resolve, 1000))
 
-    // Update the profile with additional information (removed is_active)
+    // Update the user with additional information
     const { error: profileError } = await supabase
-      .from('profiles')
+      .from('users')
       .update({
-        name: trainerData.name,
-        phone: trainerData.phone,
-        location: trainerData.location,
-        gender: trainerData.gender
+        full_name: trainerData.name,
+        phone_number: trainerData.phone,
+        user_type: 'trainer'
       })
       .eq('id', authData.user.id)
 

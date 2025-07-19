@@ -20,8 +20,8 @@ export const useTrainerOrders = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'bookings',
-          filter: `trainer_id=eq.${user.id}`
+          table: 'trainer_bookings',
+          filter: `trainer_user_id=eq.${user.id}`
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['trainer-orders'] });
@@ -40,13 +40,13 @@ export const useTrainerOrders = () => {
       if (!user) throw new Error('No user');
 
       const { data, error } = await supabase
-        .from('bookings')
+        .from('trainer_bookings')
         .select(`
           *,
-          client:profiles!bookings_client_id_fkey(name, email, phone),
-          transaction:transactions(*)
+          client:users!trainer_bookings_user_id_fkey(full_name, email, phone_number),
+          payment_transactions(*)
         `)
-        .eq('trainer_id', user.id)
+        .eq('trainer_user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

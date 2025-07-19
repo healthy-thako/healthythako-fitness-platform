@@ -38,23 +38,14 @@ const TrainerDashboard = () => {
       const profile = profileData.profile;
       const trainerProfile = profileData.trainerProfile as any; // Type assertion to avoid type issues
 
-      // Check if basic profile is complete (updated for new schema)
-      const basicProfileComplete = profile?.phone_number && profile?.location;
+      // Check if profile is marked as complete in user_profiles table
+      const profileComplete = profile?.profile_completed === true;
 
-      // Check if trainer profile is complete (updated for new schema)
-      const trainerProfileComplete = trainerProfile &&
-        trainerProfile.bio &&
-        trainerProfile.pricing?.hourly_rate &&
-        trainerProfile.experience &&
-        trainerProfile.specialties &&
-        Array.isArray(trainerProfile.specialties) &&
-        trainerProfile.specialties.length > 0;
-
-      // If either basic or trainer profile is incomplete, redirect to onboarding
-      if (!basicProfileComplete || !trainerProfileComplete) {
-        console.log('Profile incomplete, redirecting to onboarding:', {
-          basicProfileComplete,
-          trainerProfileComplete,
+      // If profile is not marked as complete, redirect to onboarding
+      if (!profileComplete) {
+        console.log('Trainer profile incomplete, redirecting to onboarding:', {
+          profileComplete,
+          profile_completed: profile?.profile_completed,
           profile: profile,
           trainerProfile: trainerProfile
         });
@@ -89,17 +80,17 @@ const TrainerDashboard = () => {
             <main className="flex-1">
               <ErrorBoundary>
                 <Routes>
-                  <Route path="/" element={<TrainerOverview />} />
-                  <Route path="/gigs" element={<TrainerGigs />} />
-                  <Route path="/orders" element={<TrainerOrders />} />
-                  <Route path="/messages" element={<TrainerMessages />} />
-                  <Route path="/analytics" element={<TrainerAnalytics />} />
-                  <Route path="/earnings" element={<TrainerEarnings />} />
-                  <Route path="/schedule" element={<TrainerSchedule />} />
-                  <Route path="/requests" element={<TrainerRequests />} />
-                  <Route path="/profile" element={<TrainerDashboardProfile />} />
-                  <Route path="/withdraw" element={<TrainerWithdraw />} />
-                  <Route path="/settings" element={<TrainerSettings />} />
+                  <Route index element={<TrainerOverview />} />
+                  <Route path="gigs" element={<TrainerGigs />} />
+                  <Route path="orders" element={<TrainerOrders />} />
+                  <Route path="messages" element={<TrainerMessages />} />
+                  <Route path="analytics" element={<TrainerAnalytics />} />
+                  <Route path="earnings" element={<TrainerEarnings />} />
+                  <Route path="schedule" element={<TrainerSchedule />} />
+                  <Route path="requests" element={<TrainerRequests />} />
+                  <Route path="profile" element={<TrainerDashboardProfile />} />
+                  <Route path="withdraw" element={<TrainerWithdraw />} />
+                  <Route path="settings" element={<TrainerSettings />} />
                 </Routes>
               </ErrorBoundary>
             </main>

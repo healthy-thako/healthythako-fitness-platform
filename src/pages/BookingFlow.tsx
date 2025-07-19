@@ -13,7 +13,7 @@ import { useTrainerDetails } from '@/hooks/useTrainerSearch';
 import { useTrainerBookingPayment } from '@/hooks/useUddoktapayPayment';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CalendarIcon, Clock, User, MapPin, Video, Home, CheckCircle, Star, Award } from 'lucide-react';
+import { CalendarIcon, Clock, User, MapPin, Video, Home, CheckCircle, Star, Award, AlertCircle, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -99,12 +99,26 @@ const BookingFlow = () => {
     const packageType = searchParams.get('package_type');
     
     if (title) setDescription(title + (desc ? ': ' + desc : ''));
-    if (date) setSelectedDate(new Date(date));
+    if (date) {
+      try {
+        const parsedDate = new Date(date);
+        if (!isNaN(parsedDate.getTime())) {
+          setSelectedDate(parsedDate);
+        }
+      } catch (error) {
+        console.warn('Invalid date format:', date);
+      }
+    }
     if (time) setSelectedTime(time);
     if (mode && ['online', 'in-person', 'home'].includes(mode)) {
       setSelectedMode(mode as 'online' | 'in-person' | 'home');
     }
-    if (sessionCount) setSessionCount(parseInt(sessionCount));
+    if (sessionCount) {
+      const count = parseInt(sessionCount);
+      if (!isNaN(count) && count > 0) {
+        setSessionCount(count);
+      }
+    }
     if (packageType && ['basic', 'standard', 'premium'].includes(packageType)) {
       setSelectedPackage(packageType as 'basic' | 'standard' | 'premium');
     }
@@ -126,7 +140,16 @@ const BookingFlow = () => {
       return;
     }
 
+    // Validate date is not in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      toast.error('Please select a future date');
+      return;
+    }
+
     setIsProcessing(true);
+    toast.info('Creating payment session...');
 
     try {
       const bookingData = {
@@ -161,10 +184,11 @@ const BookingFlow = () => {
 
       // Payment creation successful - user will be redirected to payment page
       // Booking will be created after successful payment via webhook
-      
+      toast.success('Payment session created! Redirecting to payment gateway...');
+
     } catch (error: any) {
       console.error('Error creating payment:', error);
-      toast.error('Failed to create payment session: ' + error.message);
+      toast.error('Failed to create payment session: ' + (error.message || 'Unknown error'));
     } finally {
       setIsProcessing(false);
     }
@@ -174,8 +198,10 @@ const BookingFlow = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading trainer information...</p>
+          <p className="text-gray-500 text-sm mt-2">Please wait while we prepare your booking session</p>
         </div>
         <Footer />
       </div>
@@ -279,6 +305,30 @@ const BookingFlow = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl">Book Your Training Session</CardTitle>
+
+                {/* Progress Indicator */}
+                <div className="flex items-center justify-between mt-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                      1
+                    </div>
+                    <span className="text-sm font-medium text-purple-600">Select Package & Details</span>
+                  </div>
+                  <div className="flex-1 h-0.5 bg-gray-300 mx-4"></div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-medium">
+                      2
+                    </div>
+                    <span className="text-sm text-gray-600">Payment</span>
+                  </div>
+                  <div className="flex-1 h-0.5 bg-gray-300 mx-4"></div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-medium">
+                      3
+                    </div>
+                    <span className="text-sm text-gray-600">Confirmation</span>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Package Selection */}
@@ -289,10 +339,10 @@ const BookingFlow = () => {
                       <div
                         key={key}
                         onClick={() => setSelectedPackage(key as any)}
-                        className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                        className={`p-4 border rounded-lg cursor-pointer transition-all duration-300 transform hover:scale-105 ${
                           selectedPackage === key
-                            ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200 shadow-lg'
+                            : 'border-gray-200 hover:border-purple-300 hover:shadow-md'
                         }`}
                       >
                         <div className="text-center">
@@ -356,14 +406,16 @@ const BookingFlow = () => {
 
                 {/* Date Selection */}
                 <div>
-                  <Label>Select Date</Label>
+                  <Label className="text-base font-semibold">Select Date</Label>
+                  <p className="text-sm text-gray-600 mb-2">Choose your preferred session date</p>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !selectedDate && "text-muted-foreground"
+                          "w-full justify-start text-left font-normal h-12 transition-all duration-200",
+                          !selectedDate && "text-muted-foreground",
+                          selectedDate && "border-purple-300 bg-purple-50"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -377,6 +429,7 @@ const BookingFlow = () => {
                         onSelect={setSelectedDate}
                         disabled={(date) => date < new Date() || date < new Date("1900-01-01")}
                         initialFocus
+                        className="rounded-md border"
                       />
                     </PopoverContent>
                   </Popover>
@@ -384,35 +437,64 @@ const BookingFlow = () => {
 
                 {/* Time Selection */}
                 <div>
-                  <Label htmlFor="time">Select Time</Label>
+                  <Label htmlFor="time" className="text-base font-semibold">Select Time</Label>
+                  <p className="text-sm text-gray-600 mb-2">Choose a convenient time slot</p>
                   <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger>
+                    <SelectTrigger className={cn(
+                      "h-12 transition-all duration-200",
+                      selectedTime && "border-purple-300 bg-purple-50"
+                    )}>
                       <SelectValue placeholder="Choose time slot" />
                     </SelectTrigger>
                     <SelectContent>
-                      {timeSlots.map(time => (
-                        <SelectItem key={time} value={time}>
-                          <div className="flex items-center">
-                            <Clock className="h-4 w-4 mr-2" />
-                            {time}
-                          </div>
-                        </SelectItem>
-                      ))}
+                      <div className="grid grid-cols-2 gap-1 p-1">
+                        {timeSlots.map(time => (
+                          <SelectItem
+                            key={time}
+                            value={time}
+                            className="rounded-md hover:bg-purple-50 cursor-pointer"
+                          >
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 mr-2 text-purple-600" />
+                              {time}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </div>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <Label htmlFor="description">Session Goals & Requirements *</Label>
+                  <Label htmlFor="description" className="text-base font-semibold">Session Goals & Requirements *</Label>
+                  <p className="text-sm text-gray-600 mb-2">Help your trainer prepare the best session for you</p>
                   <Textarea
                     id="description"
                     placeholder="Tell the trainer about your fitness goals, any health conditions, or specific requirements..."
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="mt-1"
+                    onChange={(e) => {
+                      if (e.target.value.length <= 500) {
+                        setDescription(e.target.value);
+                      }
+                    }}
+                    className={cn(
+                      "mt-1 transition-all duration-200 resize-none",
+                      description.trim() && "border-purple-300 bg-purple-50"
+                    )}
                     rows={4}
                   />
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-xs text-gray-500">
+                      {description.length}/500 characters
+                    </p>
+                    {description.trim() && (
+                      <p className="text-xs text-green-600 flex items-center">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Looks good!
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Total Price */}
@@ -426,19 +508,44 @@ const BookingFlow = () => {
                   </p>
                 </div>
 
+                {/* Form Validation Summary */}
+                {(!selectedDate || !selectedTime || !description.trim()) && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex items-center">
+                      <AlertCircle className="h-5 w-5 text-amber-600 mr-2" />
+                      <div>
+                        <h4 className="text-sm font-medium text-amber-800">Please complete the following:</h4>
+                        <ul className="text-sm text-amber-700 mt-1 space-y-1">
+                          {!selectedDate && <li>• Select a date for your session</li>}
+                          {!selectedTime && <li>• Choose a time slot</li>}
+                          {!description.trim() && <li>• Add a description for your session</li>}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <Button
                   onClick={handlePayment}
                   disabled={!selectedDate || !selectedTime || !description.trim() || isProcessing}
-                  className="w-full h-12 text-lg bg-purple-600 hover:bg-purple-700"
+                  className={cn(
+                    "w-full h-12 text-lg transition-all duration-300",
+                    (!selectedDate || !selectedTime || !description.trim())
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-purple-600 hover:bg-purple-700 hover:shadow-lg transform hover:scale-[1.02]"
+                  )}
                 >
                   {isProcessing ? (
                     <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processing...
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                      Creating Payment Session...
                     </div>
                   ) : (
-                    `Pay ৳${calculateTotalPrice().toLocaleString()} & Book Session`
+                    <div className="flex items-center justify-center">
+                      <CreditCard className="h-5 w-5 mr-2" />
+                      Pay ৳{calculateTotalPrice().toLocaleString()} & Book Session
+                    </div>
                   )}
                 </Button>
               </CardContent>

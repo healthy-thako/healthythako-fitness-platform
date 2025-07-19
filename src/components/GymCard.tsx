@@ -57,12 +57,18 @@ const GymCard: React.FC<GymCardProps> = ({
   };
 
   return (
-    <Card className="group relative overflow-hidden bg-white hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-gray-200 h-full flex flex-col transform hover:-translate-y-0.5 sm:hover:-translate-y-1">
+    <Card
+      className="group relative overflow-hidden bg-white hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-gray-200 h-full flex flex-col transform hover:-translate-y-0.5 sm:hover:-translate-y-1 cursor-pointer"
+      onClick={handleViewProfile}
+    >
       {/* Favorite Heart */}
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => onFavorite(gym.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onFavorite(gym.id);
+        }}
         className={`absolute top-2 sm:top-3 right-2 sm:right-3 z-10 p-1.5 sm:p-2 h-6 w-6 sm:h-8 sm:w-8 rounded-full transition-all duration-300 ${
           isFavorited ? 'text-red-500 hover:text-red-600 bg-white shadow-lg' : 'text-gray-400 hover:text-red-500 bg-white/80 backdrop-blur-sm'
         }`}
@@ -73,9 +79,12 @@ const GymCard: React.FC<GymCardProps> = ({
       {/* Gym Image */}
       <div className="relative h-40 sm:h-48 lg:h-52 overflow-hidden cursor-pointer" onClick={handleViewProfile}>
         <img
-          src={gym.images?.[0] || '/placeholder.svg'}
+          src={gym.image_url || gym.images?.[0]?.url || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800'}
           alt={gym.name}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+          onError={(e) => {
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800';
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         
@@ -190,7 +199,10 @@ const GymCard: React.FC<GymCardProps> = ({
         {/* Action Buttons */}
         <div className="space-y-1.5 sm:space-y-2 mt-auto">
           <Button
-            onClick={() => onJoinClick(gym)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onJoinClick(gym);
+            }}
             className="w-full bg-gradient-to-r from-[#8b1538] to-[#6b1029] hover:from-[#6b1029] hover:to-[#4a0a1d] text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 text-xs sm:text-sm py-2 sm:py-2.5"
           >
             <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
@@ -199,7 +211,10 @@ const GymCard: React.FC<GymCardProps> = ({
           <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
             <Button
               variant="outline"
-              onClick={handleViewProfile}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewProfile();
+              }}
               className="border-gray-300 hover:border-[#8b1538] hover:text-[#8b1538] hover:bg-[#8b1538]/5 transition-all duration-300"
             >
               <Eye className="h-4 w-4 mr-1" />
@@ -207,7 +222,10 @@ const GymCard: React.FC<GymCardProps> = ({
             </Button>
             <Button
               variant="outline"
-              onClick={() => onViewDetails(gym)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewDetails(gym);
+              }}
               className="border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-300"
             >
               <ArrowRight className="h-4 w-4 mr-1" />

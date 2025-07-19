@@ -7,8 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGymMembershipPayment } from '@/hooks/useUddoktapayPayment';
+import { useFallbackGymDetails } from '@/hooks/useFallbackGymDetails';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import FallbackDebugPanel from '@/components/FallbackDebugPanel';
 import { ArrowLeft, MapPin, Star, Phone, Mail, Clock, Heart, Share2, Users, CheckCircle, Dumbbell, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,6 +23,7 @@ interface Gym {
   description: string;
   phone?: string;
   email?: string;
+  website?: string;
   opening_time: string;
   closing_time: string;
   monthly_price: number;
@@ -29,6 +32,19 @@ interface Gym {
   is_verified: boolean;
   rating: number;
   review_count: number;
+  images?: Array<{
+    id: string;
+    image_url: string;
+    is_primary: boolean;
+  }>;
+  amenities?: string[];
+  hours?: Array<{
+    day_of_week: number;
+    open_time: string;
+    close_time: string;
+    is_closed: boolean;
+  }>;
+  membership_plans?: MembershipPlan[];
 }
 
 interface MembershipPlan {
@@ -45,67 +61,28 @@ const PublicGymProfile = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const gymMembershipPayment = useGymMembershipPayment();
-  const [loading, setLoading] = useState(true);
-  const [gym, setGym] = useState<Gym | null>(null);
-  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
-  const [reviews, setReviews] = useState([]);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
+  // Use fallback hook for immediate data loading
+  const { data: gymData, isLoading: loading, error, isUsingFallback } = useFallbackGymDetails(gymId || '');
+
+  // Extract data from the hook result
+  const gym = gymData;
+  const membershipPlans = gymData?.membership_plans || [];
+  const reviews: any[] = []; // Reviews will be handled separately
+
+  // Log gym data for debugging
   useEffect(() => {
-    if (gymId) {
-      fetchGymData();
+    if (gymData) {
+      console.log('PublicGymProfile - Gym Data:', gymData);
     }
-  }, [gymId]);
-
-  const fetchGymData = async () => {
-    if (!gymId) return;
-
-    setLoading(true);
-    try {
-      // Fetch gym details
-      const { data: gymData, error: gymError } = await supabase
-        .from('gyms')
-        .select('*')
-        .eq('id', gymId)
-        .eq('is_active', true)
-        .single();
-
-      if (gymError) {
-        console.error('Error fetching gym:', gymError);
-        setGym(null);
-        return;
-      }
-
-      setGym(gymData as any);
-
-      // Fetch membership plans (updated table name)
-      const { data: plansData } = await supabase
-        .from('membership_plans')
-        .select('*')
-        .eq('gym_id', gymId)
-        .order('price', { ascending: true });
-
-      setMembershipPlans(plansData || []);
-
-      // Fetch reviews (updated for new schema)
-      const { data: reviewsData } = await supabase
-        .from('reviews')
-        .select(`
-          *,
-          users!reviews_user_id_fkey(full_name)
-        `)
-        .eq('gym_id', gymId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      setReviews(reviewsData || []);
-    } catch (error) {
-      console.error('Error fetching gym data:', error);
-      toast.error('Failed to load gym information');
-    } finally {
-      setLoading(false);
+    if (error) {
+      console.error('Error loading gym:', error);
     }
-  };
+  }, [gymData, error]);
+
+
 
   const handleJoinGym = async (planId?: string) => {
     if (!user) {
@@ -238,16 +215,56 @@ const PublicGymProfile = () => {
           </div>
         </div>
 
+        {/* Fallback Data Notice */}
+        {isUsingFallback && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center">
+              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                <span className="text-blue-600 text-sm">ℹ️</span>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-medium text-blue-800">Demo Gym Profile</h4>
+                <p className="text-xs text-blue-600 mt-1">
+                  Currently showing sample gym information due to connectivity issues.
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="ml-2 underline hover:no-underline"
+                  >
+                    Try refreshing
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Hero Section */}
             <Card className="overflow-hidden">
-              <div className="h-48 sm:h-64 bg-gradient-to-br from-pink-50 to-rose-100 relative">
-                <div className="flex items-center justify-center h-full">
-                  <span className="text-6xl">🏋️</span>
-                </div>
-                
+              <div className="h-48 sm:h-64 relative">
+                {gym.images && gym.images.length > 0 ? (
+                  <img
+                    src={gym.images.find(img => img.is_primary)?.image_url || gym.images[0]?.image_url}
+                    alt={gym.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to gradient background if image fails to load
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-pink-50', 'to-rose-100');
+                      const fallback = document.createElement('div');
+                      fallback.className = 'flex items-center justify-center h-full';
+                      fallback.innerHTML = '<span class="text-6xl">🏋️</span>';
+                      e.currentTarget.parentElement!.appendChild(fallback);
+                    }}
+                  />
+                ) : (
+                  <div className="bg-gradient-to-br from-pink-50 to-rose-100 h-full flex items-center justify-center">
+                    <span className="text-6xl">🏋️</span>
+                  </div>
+                )}
+
                 {gym.is_verified && (
                   <Badge className="absolute top-4 left-4 bg-green-500 text-white">
                     <CheckCircle className="h-3 w-3 mr-1" />
@@ -512,6 +529,18 @@ const PublicGymProfile = () => {
       </main>
       
       <Footer />
+
+      {/* Debug Panel */}
+      <FallbackDebugPanel
+        isVisible={showDebugPanel}
+        onToggle={() => setShowDebugPanel(!showDebugPanel)}
+        gymsData={{
+          data: gym ? [gym] : [],
+          isLoading: loading,
+          error,
+          isUsingFallback
+        }}
+      />
     </div>
   );
 };

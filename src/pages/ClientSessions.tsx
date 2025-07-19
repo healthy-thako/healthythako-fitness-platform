@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import LeaveReviewModal from '@/components/LeaveReviewModal';
 
 const ClientSessions = () => {
+  console.log('ClientSessions component rendered!');
   const [filter, setFilter] = useState('all');
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);

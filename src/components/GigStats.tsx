@@ -25,21 +25,21 @@ const GigStats: React.FC<GigStatsProps> = ({ gigs }) => {
     },
     {
       title: 'Total Views',
-      value: totalViews,
+      value: totalViews.toLocaleString(),
       icon: Eye,
       color: 'text-green-600',
       bgColor: 'bg-green-50'
     },
     {
       title: 'Total Orders',
-      value: totalOrders,
+      value: totalOrders.toLocaleString(),
       icon: ShoppingBag,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
     },
     {
       title: 'Avg Price',
-      value: `৳${Math.round(avgPrice)}`,
+      value: `৳${Math.round(avgPrice).toLocaleString()}`,
       icon: DollarSign,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50'

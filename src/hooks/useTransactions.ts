@@ -39,24 +39,25 @@ export const useTransactions = () => {
 
 export const useClientTransactions = () => {
   const { user } = useAuth();
-  
+
   return useQuery({
     queryKey: ['client-transactions', user?.id],
     queryFn: async () => {
       if (!user) throw new Error('No user');
-      
+
       const { data, error } = await supabase
-        .from('transactions')
+        .from('payment_transactions')
         .select(`
           *,
-          booking:bookings(
+          booking:trainer_bookings(
             id,
-            title,
-            trainer:profiles!trainer_id(name, email)
-          )
+            session_type,
+            trainer:trainers!trainer_bookings_trainer_id_fkey(name, contact_email)
+          ),
+          user:users!payment_transactions_user_id_fkey(full_name, email)
         `)
-        .eq('booking.client_id', user.id)
-        .order('transaction_date', { ascending: false });
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data;
@@ -67,24 +68,34 @@ export const useClientTransactions = () => {
 
 export const useTrainerTransactions = () => {
   const { user } = useAuth();
-  
+
   return useQuery({
     queryKey: ['trainer-transactions', user?.id],
     queryFn: async () => {
       if (!user) throw new Error('No user');
-      
+
+      // Get trainer ID first
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!trainer) throw new Error('Trainer profile not found');
+
       const { data, error } = await supabase
-        .from('transactions')
+        .from('payment_transactions')
         .select(`
           *,
-          booking:bookings(
+          booking:trainer_bookings(
             id,
-            title,
-            client:profiles!client_id(name, email)
-          )
+            session_type,
+            user:users!trainer_bookings_user_id_fkey(full_name, email)
+          ),
+          user:users!payment_transactions_user_id_fkey(full_name, email)
         `)
-        .eq('trainer_id', user.id)
-        .order('transaction_date', { ascending: false });
+        .eq('trainer_id', trainer.id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data;

@@ -19,12 +19,25 @@ export const useCreateTransaction = () => {
   return useMutation({
     mutationFn: async (transactionData: CreateTransactionData) => {
       if (!user) throw new Error('User not authenticated');
-      
+
+      // Get trainer ID first
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!trainer) throw new Error('Trainer profile not found');
+
       const { data, error } = await supabase
-        .from('transactions')
+        .from('payment_transactions')
         .insert({
-          ...transactionData,
-          trainer_id: user.id
+          user_id: user.id,
+          trainer_id: trainer.id,
+          amount: transactionData.amount,
+          transaction_type: 'booking_payment',
+          payment_method: transactionData.payment_method,
+          status: transactionData.status || 'pending'
         })
         .select()
         .single();
@@ -34,26 +47,37 @@ export const useCreateTransaction = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-transactions'] });
     }
   });
 };
 
 export const useTrainerTransactions = () => {
   const { user } = useAuth();
-  
+
   return useQuery({
-    queryKey: ['transactions', user?.id],
+    queryKey: ['trainer-transactions', user?.id],
     queryFn: async () => {
       if (!user) throw new Error('No user');
-      
+
+      // Get trainer ID first
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!trainer) throw new Error('Trainer profile not found');
+
       const { data, error } = await supabase
-        .from('transactions')
+        .from('payment_transactions')
         .select(`
           *,
-          booking:bookings(title, client_id, amount)
+          user:users!payment_transactions_user_id_fkey(full_name, email),
+          trainer:trainers!payment_transactions_trainer_id_fkey(name, contact_email)
         `)
-        .eq('trainer_id', user.id)
-        .order('transaction_date', { ascending: false });
+        .eq('trainer_id', trainer.id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data || [];
@@ -67,17 +91,26 @@ export const useUpdateTransactionStatus = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ transactionId, status }: { 
-      transactionId: string; 
-      status: 'pending' | 'completed' | 'withdrawn';
+    mutationFn: async ({ transactionId, status }: {
+      transactionId: string;
+      status: 'pending' | 'completed' | 'failed' | 'refunded';
     }) => {
       if (!user) throw new Error('No user authenticated');
-      
+
+      // Get trainer ID first
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!trainer) throw new Error('Trainer profile not found');
+
       const { data, error } = await supabase
-        .from('transactions')
+        .from('payment_transactions')
         .update({ status })
         .eq('id', transactionId)
-        .eq('trainer_id', user.id)
+        .eq('trainer_id', trainer.id)
         .select()
         .single();
 
@@ -86,6 +119,7 @@ export const useUpdateTransactionStatus = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-transactions'] });
     }
   });
 };

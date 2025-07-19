@@ -6,28 +6,29 @@ import { supabase } from '@/integrations/supabase/client';
 export const useBlogPosts = (filters?: { status?: string; category?: string; search?: string }) => {
   const queryClient = useQueryClient();
 
-  // Set up real-time subscription
+  // Real-time subscription - Temporarily disabled to fix WebSocket issues
   useEffect(() => {
-    const channel = supabase
-      .channel('blog-posts-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'blog_posts'
-        },
-        (payload) => {
-          console.log('Blog post change detected:', payload);
-          // Invalidate and refetch blog posts
-          queryClient.invalidateQueries({ queryKey: ['blog-posts'] });
-        }
-      )
-      .subscribe();
+    // TODO: Re-enable realtime subscriptions after fixing WebSocket connection issues
+    // const channel = supabase
+    //   .channel('blog-posts-changes')
+    //   .on(
+    //     'postgres_changes',
+    //     {
+    //       event: '*',
+    //       schema: 'public',
+    //       table: 'blog_posts'
+    //     },
+    //     (payload) => {
+    //       console.log('Blog post change detected:', payload);
+    //       // Invalidate and refetch blog posts
+    //       queryClient.invalidateQueries({ queryKey: ['blog-posts'] });
+    //     }
+    //   )
+    //   .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // return () => {
+    //   supabase.removeChannel(channel);
+    // };
   }, [queryClient]);
 
   return useQuery({

@@ -77,20 +77,25 @@ export const useBookings = () => {
 
 export const useUserBookings = () => {
   const { user } = useAuth();
-  
+
   return useQuery({
-    queryKey: ['bookings', user?.id],
+    queryKey: ['user-bookings', user?.id],
     queryFn: async () => {
       if (!user) throw new Error('No user');
-      
+
       const { data, error } = await supabase
-        .from('bookings')
+        .from('trainer_bookings')
         .select(`
           *,
-          trainer:profiles!trainer_id(name, email),
-          client:profiles!client_id(name, email)
+          trainer:trainers!trainer_bookings_trainer_id_fkey(
+            id,
+            name,
+            contact_email,
+            users!trainers_user_id_fkey(full_name, email)
+          ),
+          client:users!trainer_bookings_user_id_fkey(full_name, email)
         `)
-        .or(`client_id.eq.${user.id},trainer_id.eq.${user.id}`)
+        .or(`user_id.eq.${user.id},trainer_user_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

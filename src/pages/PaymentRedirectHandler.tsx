@@ -76,19 +76,39 @@ const PaymentRedirectHandler = () => {
 
           // Redirect to appropriate success page after a delay
           setTimeout(() => {
+            const successParams = new URLSearchParams({
+              verified: 'true',
+              type: paymentType || 'general',
+              invoice_id: invoiceId,
+              ...(verificationResult.booking_id && { booking_id: verificationResult.booking_id }),
+              ...(verificationResult.transaction_id && { transaction_id: verificationResult.transaction_id }),
+              ...(amount && { amount: amount })
+            });
+
             if (paymentType === 'trainer_booking') {
-              navigate('/payment-success?type=trainer_booking&verified=true');
+              navigate(`/payment-success?${successParams.toString()}`);
             } else if (paymentType === 'gym_membership') {
-              navigate('/payment-success?type=gym_membership&verified=true');
+              navigate(`/payment-success?${successParams.toString()}`);
             } else if (paymentType === 'service_order') {
-              navigate('/payment-success?type=service_order&verified=true');
+              navigate(`/payment-success?${successParams.toString()}`);
             } else {
-              navigate('/payment-success?verified=true');
+              navigate(`/payment-success?${successParams.toString()}`);
             }
           }, 3000);
 
         } else {
-          throw new Error(verificationResult.error || 'Payment verification failed');
+          // Handle different payment statuses
+          if (verificationResult.status === 'PENDING') {
+            setVerificationStatus('loading');
+            toast.info('Payment is still being processed. Please wait...');
+            // Retry verification after a delay
+            setTimeout(() => {
+              window.location.reload();
+            }, 5000);
+            return;
+          } else {
+            throw new Error(verificationResult.error || `Payment verification failed. Status: ${verificationResult.status}`);
+          }
         }
 
       } catch (error: any) {
@@ -119,22 +139,30 @@ const PaymentRedirectHandler = () => {
 
   if (verificationStatus === 'loading') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-xl border-0">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-              <RefreshCw className="h-8 w-8 text-blue-600 animate-spin" />
+            <div className="relative mx-auto mb-4 w-20 h-20">
+              <div className="absolute inset-0 bg-purple-100 rounded-full animate-pulse"></div>
+              <div className="relative w-full h-full bg-purple-200 rounded-full flex items-center justify-center">
+                <CreditCard className="h-10 w-10 text-purple-600 animate-bounce" />
+              </div>
             </div>
-            <CardTitle>Processing Payment</CardTitle>
+            <CardTitle className="text-2xl text-gray-900">Processing Payment</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 mb-6">
               Please wait while we verify your payment...
             </p>
-            <div className="space-y-2 text-sm text-gray-500">
-              {invoiceId && <p>Invoice ID: {invoiceId}</p>}
-              {paymentType && <p>Payment Type: {paymentType}</p>}
-              {amount && <p>Amount: ৳{amount}</p>}
+            <div className="flex items-center justify-center space-x-1 mb-6">
+              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm text-gray-600">
+              {invoiceId && <p><span className="font-medium">Invoice ID:</span> {invoiceId}</p>}
+              {paymentType && <p><span className="font-medium">Payment Type:</span> {paymentType}</p>}
+              {amount && <p><span className="font-medium">Amount:</span> ৳{amount}</p>}
             </div>
           </CardContent>
         </Card>
@@ -144,13 +172,13 @@ const PaymentRedirectHandler = () => {
 
   if (verificationStatus === 'success') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-xl border-0">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+            <div className="mx-auto mb-4 w-20 h-20 bg-green-100 rounded-full flex items-center justify-center animate-pulse">
+              <CheckCircle className="h-12 w-12 text-green-600" />
             </div>
-            <CardTitle className="text-green-800">Payment Successful!</CardTitle>
+            <CardTitle className="text-2xl text-green-800">Payment Successful!</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-gray-600 mb-4">

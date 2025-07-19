@@ -172,17 +172,19 @@ serve(async (req) => {
 
           // Create transaction record for gym membership
           const { error: transactionError } = await supabase
-            .from('transactions')
+            .from('payment_transactions')
             .insert({
               user_id: result.metadata.user_id,
-              gym_id: membershipData.gym_id,
-              membership_id: newMembership.id,
               amount: parseFloat(result.amount),
+              transaction_type: 'gym_membership',
               payment_method: 'uddoktapay',
               status: 'completed',
-              transaction_date: new Date().toISOString(),
               payment_session_id: result.session_id || result.invoice_id,
-              description: `Gym membership payment for ${membershipData.gym_name || 'gym'}`
+              metadata: {
+                gym_id: membershipData.gym_id,
+                membership_id: newMembership.id,
+                description: `Gym membership payment for ${membershipData.gym_name || 'gym'}`
+              }
             });
 
           if (transactionError) {
@@ -298,19 +300,21 @@ serve(async (req) => {
 // Helper functions - Updated for new schema
 async function createServiceOrderTransaction(supabase: any, booking: any, orderData: any, result: any) {
   const { error: transactionError } = await supabase
-    .from('transactions')
+    .from('payment_transactions')
     .insert({
       user_id: result.metadata.user_id,
       trainer_id: orderData.trainer_id,
-      booking_id: booking.id,
       amount: parseFloat(result.amount),
-      commission: parseFloat(result.amount) * 0.1,
-      net_amount: parseFloat(result.amount) * 0.9,
+      transaction_type: 'booking_payment',
       payment_method: 'uddoktapay',
       status: 'completed',
-      transaction_date: new Date().toISOString(),
       payment_session_id: result.session_id || result.invoice_id,
-      description: `Service order payment for ${orderData.service_title || 'training service'}`
+      metadata: {
+        booking_id: booking.id,
+        commission: parseFloat(result.amount) * 0.1,
+        net_amount: parseFloat(result.amount) * 0.9,
+        description: `Service order payment for ${orderData.service_title || 'training service'}`
+      }
     });
 
   if (transactionError) {
@@ -340,19 +344,21 @@ async function createServiceOrderTransaction(supabase: any, booking: any, orderD
 
 async function createTrainerBookingTransaction(supabase: any, booking: any, result: any) {
   const { error: transactionError } = await supabase
-    .from('transactions')
+    .from('payment_transactions')
     .insert({
       user_id: result.metadata.user_id,
       trainer_id: result.metadata.trainer_id || booking.trainer_id,
-      booking_id: booking.id,
       amount: parseFloat(result.amount),
-      commission: parseFloat(result.amount) * 0.1,
-      net_amount: parseFloat(result.amount) * 0.9,
+      transaction_type: 'booking_payment',
       payment_method: 'uddoktapay',
       status: 'completed',
-      transaction_date: new Date().toISOString(),
       payment_session_id: result.session_id || result.invoice_id,
-      description: `Trainer booking payment for ${booking.service_type || 'training session'}`
+      metadata: {
+        booking_id: booking.id,
+        commission: parseFloat(result.amount) * 0.1,
+        net_amount: parseFloat(result.amount) * 0.9,
+        description: `Trainer booking payment for ${booking.service_type || 'training session'}`
+      }
     });
 
   if (transactionError) {

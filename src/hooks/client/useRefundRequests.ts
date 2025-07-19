@@ -18,11 +18,20 @@ export const useRefundRequests = () => {
         .from('refund_requests')
         .select(`
           *,
-          booking:bookings(id, title, amount, trainer:profiles!bookings_trainer_id_fkey(name)),
-          membership:gym_member_purchases(
-            id, amount_paid, 
+          booking:trainer_bookings(
+            id,
+            session_type,
+            total_amount,
+            trainer:trainers!trainer_bookings_trainer_id_fkey(
+              name,
+              users!trainers_user_id_fkey(full_name)
+            )
+          ),
+          membership:user_memberships(
+            id,
+            amount_paid,
             gym:gyms(name),
-            plan:gym_membership_plans(name)
+            plan:membership_plans(name)
           )
         `)
         .eq('user_id', user.id)

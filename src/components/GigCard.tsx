@@ -103,7 +103,7 @@ const GigCard: React.FC<GigCardProps> = ({ gig, linkTo = `/gig/${gig.id}` }) => 
 
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-base sm:text-lg font-bold text-green-600">৳{gig.basic_price}</span>
+            <span className="text-base sm:text-lg font-bold text-green-600">৳{Number(gig.basic_price).toLocaleString()}</span>
             <span className="text-xs sm:text-sm text-gray-600"> starting</span>
           </div>
           <Link to={linkTo}>
@@ -115,8 +115,8 @@ const GigCard: React.FC<GigCardProps> = ({ gig, linkTo = `/gig/${gig.id}` }) => 
 
         {/* Stats */}
         <div className="flex justify-between text-xs text-gray-500 mt-2 sm:mt-3 pt-2 sm:pt-3 border-t">
-          <span>{gig.view_count || 0} views</span>
-          <span>{gig.order_count || 0} orders</span>
+          <span>{(gig.view_count || 0).toLocaleString()} views</span>
+          <span>{(gig.order_count || 0).toLocaleString()} orders</span>
         </div>
       </CardContent>
     </Card>

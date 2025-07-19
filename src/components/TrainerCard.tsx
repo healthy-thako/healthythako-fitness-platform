@@ -10,28 +10,33 @@ interface TrainerCardProps {
   trainer: {
     id: string;
     name: string;
-    image?: string;
-    specialization?: string;
+    email: string;
     location?: string;
-    rating?: number;
-    rate_per_hour?: number;
-    experience_years?: number;
-    trainer_profile?: {
-      specializations?: string[];
-      rate_per_hour?: number;
-      location?: string;
-      is_verified?: boolean;
+    trainer_profiles?: {
+      bio?: string;
       profile_image?: string;
+      rate_per_hour?: number;
+      experience_years?: number;
+      specializations?: string[];
+      is_verified?: boolean;
+      services?: string[];
+      languages?: string[];
+      availability?: any;
+      certifications?: string[];
     };
+    average_rating?: number;
+    total_reviews?: number;
+    completed_bookings?: number;
   };
 }
 
 const TrainerCard: React.FC<TrainerCardProps> = ({ trainer }) => {
-  const specializations = trainer.trainer_profile?.specializations || [trainer.specialization].filter(Boolean);
-  const rate = trainer.trainer_profile?.rate_per_hour || trainer.rate_per_hour || 800;
-  const location = trainer.trainer_profile?.location || trainer.location || 'Dhaka';
-  const isVerified = trainer.trainer_profile?.is_verified || false;
-  const profileImage = trainer.trainer_profile?.profile_image || trainer.image;
+  const profile = trainer.trainer_profiles;
+  const specializations = profile?.specializations || [];
+  const rate = profile?.rate_per_hour || 0;
+  const location = trainer.location || 'Dhaka';
+  const isVerified = profile?.is_verified || false;
+  const profileImage = profile?.profile_image;
 
   return (
     <Card className="group hover:shadow-2xl transition-all duration-500 overflow-hidden border-0 bg-white rounded-3xl shadow-lg hover:scale-[1.02] hover:-translate-y-1">
@@ -70,11 +75,11 @@ const TrainerCard: React.FC<TrainerCardProps> = ({ trainer }) => {
             )}
 
             {/* Experience Badge - Bottom Left on Image */}
-            {trainer.experience_years && (
+            {profile?.experience_years && (
               <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm text-purple-700 px-2 py-1 rounded-full shadow-xl border border-white/20">
                 <div className="flex items-center gap-1">
                   <Award className="h-3 w-3" />
-                  <span className="text-xs font-bold">{trainer.experience_years}+ years</span>
+                  <span className="text-xs font-bold">{profile.experience_years}+ years</span>
                 </div>
               </div>
             )}
@@ -125,7 +130,7 @@ const TrainerCard: React.FC<TrainerCardProps> = ({ trainer }) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-xl font-bold text-gray-900">৳{rate.toLocaleString()}</span>
+                      <span className="text-xl font-bold text-gray-900">৳{Number(rate).toLocaleString()}</span>
                       <span className="text-sm text-gray-600 font-medium">/session</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">Starting from</p>

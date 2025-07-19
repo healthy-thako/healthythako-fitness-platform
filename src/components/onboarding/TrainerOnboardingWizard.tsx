@@ -35,7 +35,7 @@ const TrainerOnboardingWizard = () => {
   const [currentCertification, setCurrentCertification] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { user } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
   const navigate = useNavigate();
 
   const totalSteps = 5;
@@ -47,36 +47,43 @@ const TrainerOnboardingWizard = () => {
       if (!user) return;
 
       try {
-        // Fetch basic profile
-        const { data: profile } = await supabase
-          .from('profiles')
+        // Fetch basic profile from users table
+        const { data: userData } = await supabase
+          .from('users')
           .select('*')
           .eq('id', user.id)
           .single();
 
-        // Fetch trainer profile using type assertion to avoid type issues
-        const { data: trainerProfile } = await supabase
-          .from('trainer_profiles' as any)
+        // Fetch user_profiles data
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
           .select('*')
           .eq('user_id', user.id)
           .single();
 
-        if (profile || trainerProfile) {
-          const locationParts = profile?.location ? profile.location.split(', ') : ['', ''];
-          
+        // Fetch trainer profile
+        const { data: trainerProfile } = await supabase
+          .from('trainers')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (userData || userProfile || trainerProfile) {
+          const locationParts = userProfile?.location ? userProfile.location.split(', ') : ['', ''];
+
           setFormData({
-            phone: profile?.phone || '',
-            gender: profile?.gender || '',
-            date_of_birth: profile?.date_of_birth || '',
+            phone: userData?.phone_number || userProfile?.phone_number || userProfile?.phone || '',
+            gender: userProfile?.gender || '',
+            date_of_birth: userProfile?.date_of_birth || '',
             location: locationParts[0] || '',
-            country: locationParts[1] || '',
-            bio: (trainerProfile as any)?.bio || '',
-            experience_years: (trainerProfile as any)?.experience_years?.toString() || '',
-            rate_per_hour: (trainerProfile as any)?.rate_per_hour?.toString() || '',
-            specializations: (trainerProfile as any)?.specializations || [],
-            languages: (trainerProfile as any)?.languages || [],
-            certifications: (trainerProfile as any)?.certifications?.map((cert: any) => cert.name || cert) || [],
-            profile_image: (trainerProfile as any)?.profile_image || ''
+            country: locationParts[1] || userProfile?.country || '',
+            bio: trainerProfile?.bio || '',
+            experience_years: trainerProfile?.experience?.toString() || '',
+            rate_per_hour: trainerProfile?.pricing?.hourly_rate?.toString() || '',
+            specializations: trainerProfile?.specialties || [],
+            languages: trainerProfile?.languages || [],
+            certifications: trainerProfile?.certifications || [],
+            profile_image: trainerProfile?.image_url || ''
           });
 
           console.log('Pre-populated trainer onboarding form with existing data:', {
@@ -176,17 +183,34 @@ const TrainerOnboardingWizard = () => {
     setIsLoading(true);
 
     try {
-      // Update profiles table
-      const { error: profileError } = await supabase
-        .from('profiles')
+      // Update users table
+      const { error: userError } = await supabase
+        .from('users')
         .update({
-          phone: formData.phone,
-          gender: formData.gender,
-          date_of_birth: formData.date_of_birth,
-          location: `${formData.location}, ${formData.country}`,
+          phone_number: formData.phone,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
+
+      if (userError) throw userError;
+
+      // Update user_profiles table with proper field mapping
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: user.id,
+          phone_number: formData.phone,
+          phone: formData.phone, // Keep both for compatibility
+          gender: formData.gender,
+          date_of_birth: formData.date_of_birth || null,
+          location: `${formData.location}, ${formData.country}`,
+          country: formData.country,
+          profile_completed: true, // Mark profile as completed
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
+        });
 
       if (profileError) throw profileError;
 
@@ -204,13 +228,25 @@ const TrainerOnboardingWizard = () => {
           specialties: formData.specializations,
           certifications: formData.certifications,
           image_url: formData.profile_image,
+          location: `${formData.location}, ${formData.country}`,
           updated_at: new Date().toISOString()
         });
 
       if (trainerError) throw trainerError;
 
+      console.log('Trainer profile creation successful');
+
+      // Refresh the user profile in AuthContext to reflect the completed state
+      console.log('Refreshing user profile...');
+      await refreshUserProfile();
+
       toast.success("Welcome to HealthyThako! Your trainer profile has been set up successfully.");
-      navigate('/trainer-dashboard');
+
+      // Add a small delay to ensure the profile state is updated and then navigate
+      setTimeout(() => {
+        console.log('Navigating to trainer dashboard...');
+        navigate('/trainer-dashboard', { replace: true });
+      }, 2000);
     } catch (error: any) {
       toast.error("Setup failed: " + error.message);
     } finally {

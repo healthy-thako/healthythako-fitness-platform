@@ -57,14 +57,13 @@ serve(async (req) => {
     // Wait a moment for the trigger to create the profile
     await new Promise(resolve => setTimeout(resolve, 1000))
 
-    // Update the profile with additional information
+    // Update the user with additional information
     const { error: profileError } = await supabase
-      .from('profiles')
+      .from('users')
       .update({
-        name: userData.name,
-        phone: userData.phone,
-        location: userData.location,
-        gender: userData.gender,
+        full_name: userData.name,
+        phone_number: userData.phone,
+        user_type: userData.role || 'client'
         role: userData.role
       })
       .eq('id', authData.user.id)
@@ -80,12 +79,13 @@ serve(async (req) => {
     if (userData.role === 'trainer') {
       // Create trainer profile
       const { data: trainerProfile, error: trainerError } = await supabase
-        .from('trainer_profiles')
+        .from('trainers')
         .upsert({
           user_id: authData.user.id,
+          name: userData.name,
           bio: userData.bio || '',
-          specializations: userData.specializations || [],
-          languages: userData.languages || [],
+          specialties: userData.specializations || [],
+          contact_email: userData.email,
           rate_per_hour: userData.rate_per_hour || 0,
           experience_years: userData.experience_years || 0,
           profile_image: userData.profile_image || '',

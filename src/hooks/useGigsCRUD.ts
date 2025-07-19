@@ -32,10 +32,19 @@ export const useTrainerGigs = () => {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
+      // Get trainer ID first
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!trainer) throw new Error('Trainer profile not found');
+
       const { data, error } = await supabase
         .from('gigs')
         .select('*')
-        .eq('trainer_id', user.id)
+        .eq('trainer_id', trainer.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -51,9 +60,30 @@ export const useCreateGig = () => {
 
   return useMutation({
     mutationFn: async (gigData: CreateGigData) => {
-      // DISABLED: Gigs table doesn't exist in new schema
-      // Services are now managed through trainer profiles
-      throw new Error('Gigs functionality is temporarily disabled. Services are managed through trainer profiles.');
+      if (!user) throw new Error('No user authenticated');
+
+      // Get trainer ID first
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!trainer) throw new Error('Trainer profile not found');
+
+      const { data, error } = await supabase
+        .from('gigs')
+        .insert({
+          trainer_id: trainer.id,
+          ...gigData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainer-gigs'] });
@@ -74,12 +104,21 @@ export const useUpdateGig = () => {
   return useMutation({
     mutationFn: async ({ gigId, updates }: { gigId: string; updates: Partial<CreateGigData> }) => {
       if (!user) throw new Error('No user authenticated');
-      
+
+      // Get trainer ID first
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!trainer) throw new Error('Trainer profile not found');
+
       const { data, error } = await supabase
         .from('gigs')
         .update(updates)
         .eq('id', gigId)
-        .eq('trainer_id', user.id)
+        .eq('trainer_id', trainer.id)
         .select()
         .single();
 
@@ -105,12 +144,21 @@ export const useDeleteGig = () => {
   return useMutation({
     mutationFn: async (gigId: string) => {
       if (!user) throw new Error('No user authenticated');
-      
+
+      // Get trainer ID first
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!trainer) throw new Error('Trainer profile not found');
+
       const { error } = await supabase
         .from('gigs')
         .delete()
         .eq('id', gigId)
-        .eq('trainer_id', user.id);
+        .eq('trainer_id', trainer.id);
 
       if (error) throw error;
     },
@@ -190,18 +238,17 @@ export const useGigById = (gigId: string) => {
         .from('gigs')
         .select(`
           *,
-          trainer_profiles!fk_gigs_trainer_id(
+          trainers!gigs_trainer_id_fkey(
+            id,
             user_id,
-            profile_image,
-            bio,
-            experience_years,
-            rate_per_hour,
-            specializations,
-            languages
-          ),
-          profiles!inner(
             name,
-            location
+            image_url,
+            bio,
+            experience,
+            pricing,
+            specialties,
+            languages,
+            users!trainers_user_id_fkey(full_name, email)
           )
         `)
         .eq('id', gigId)
@@ -222,21 +269,30 @@ export const useGigById = (gigId: string) => {
 // Hook for trainers to preview their own gigs (regardless of status)
 export const useGigByIdForTrainer = (gigId: string) => {
   const { user } = useAuth();
-  
+
   return useQuery({
     queryKey: ['trainer-gig-preview', gigId, user?.id],
     queryFn: async () => {
       if (!user) throw new Error('No user authenticated');
-      
+
+      // Get trainer ID first
+      const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!trainer) throw new Error('Trainer profile not found');
+
       const { data, error } = await supabase
         .from('gigs')
         .select('*')
         .eq('id', gigId)
-        .eq('trainer_id', user.id) // Only allow trainers to view their own gigs
+        .eq('trainer_id', trainer.id) // Use correct trainer ID
         .single();
 
       if (error) throw error;
-      
+
       // Add mock trainer profile data for preview
       return {
         ...data,

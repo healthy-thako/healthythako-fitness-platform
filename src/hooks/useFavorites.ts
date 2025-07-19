@@ -10,11 +10,11 @@ export const useAddToFavorites = () => {
   return useMutation({
     mutationFn: async (trainerId: string) => {
       if (!user) throw new Error('User not authenticated');
-      
+
       const { data, error } = await supabase
-        .from('favorites')
+        .from('trainer_favorites')
         .insert({
-          client_id: user.id,
+          user_id: user.id,
           trainer_id: trainerId
         })
         .select()
@@ -25,6 +25,7 @@ export const useAddToFavorites = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['favorites'] });
+      queryClient.invalidateQueries({ queryKey: ['trainer-favorites'] });
     }
   });
 };
@@ -36,45 +37,46 @@ export const useRemoveFromFavorites = () => {
   return useMutation({
     mutationFn: async (trainerId: string) => {
       if (!user) throw new Error('User not authenticated');
-      
+
       const { error } = await supabase
-        .from('favorites')
+        .from('trainer_favorites')
         .delete()
-        .eq('client_id', user.id)
+        .eq('user_id', user.id)
         .eq('trainer_id', trainerId);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['favorites'] });
+      queryClient.invalidateQueries({ queryKey: ['trainer-favorites'] });
     }
   });
 };
 
 export const useUserFavorites = () => {
   const { user } = useAuth();
-  
+
   return useQuery({
-    queryKey: ['favorites', user?.id],
+    queryKey: ['trainer-favorites', user?.id],
     queryFn: async () => {
       if (!user) throw new Error('No user');
-      
+
       const { data, error } = await supabase
-        .from('favorites')
+        .from('trainer_favorites')
         .select(`
           *,
-          trainer:profiles!trainer_id(
+          trainer:trainers!trainer_favorites_trainer_id_fkey(
             id,
             name,
-            location
-          ),
-          trainer_profile:trainer_profiles!trainer_id(
-            rate_per_hour,
-            specializations,
-            profile_image
+            location,
+            image_url,
+            pricing,
+            specialties,
+            rating,
+            users!trainers_user_id_fkey(full_name, email)
           )
         `)
-        .eq('client_id', user.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -86,16 +88,16 @@ export const useUserFavorites = () => {
 
 export const useIsFavorite = (trainerId: string) => {
   const { user } = useAuth();
-  
+
   return useQuery({
     queryKey: ['is-favorite', trainerId, user?.id],
     queryFn: async () => {
       if (!user) return false;
-      
+
       const { data, error } = await supabase
-        .from('favorites')
+        .from('trainer_favorites')
         .select('id')
-        .eq('client_id', user.id)
+        .eq('user_id', user.id)
         .eq('trainer_id', trainerId)
         .maybeSingle();
 

@@ -128,7 +128,7 @@ const GymVerificationModal = ({
                       <h4 className="font-medium">{plan.name}</h4>
                       <div className="flex items-center gap-1">
                         <DollarSign className="h-4 w-4" />
-                        <span>{plan.price}/month</span>
+                        <span>৳{plan.price}/month</span>
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 mt-1">{plan.description}</p>

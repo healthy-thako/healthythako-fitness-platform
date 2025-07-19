@@ -19,44 +19,45 @@ export interface GymSearchFilters {
 export const useGymSearch = (filters: GymSearchFilters) => {
   const queryClient = useQueryClient();
 
-  // Set up real-time subscriptions for gym data changes
+  // Real-time subscriptions for gym data changes - Temporarily disabled to fix WebSocket issues
   useEffect(() => {
-    const gymsChannel = supabase
-      .channel('gym-search-gyms')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'gyms'
-        },
-        (payload) => {
-          console.log('Gym change detected:', payload);
-          queryClient.invalidateQueries({ queryKey: ['gyms', 'search'] });
-        }
-      )
-      .subscribe();
+    // TODO: Re-enable realtime subscriptions after fixing WebSocket connection issues
+    // const gymsChannel = supabase
+    //   .channel('gym-search-gyms')
+    //   .on(
+    //     'postgres_changes',
+    //     {
+    //       event: '*',
+    //       schema: 'public',
+    //       table: 'gyms'
+    //     },
+    //     (payload) => {
+    //       console.log('Gym change detected:', payload);
+    //       queryClient.invalidateQueries({ queryKey: ['gyms', 'search'] });
+    //     }
+    //   )
+    //   .subscribe();
 
-    const plansChannel = supabase
-      .channel('gym-search-plans')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'membership_plans'
-        },
-        (payload) => {
-          console.log('Gym membership plan change detected:', payload);
-          queryClient.invalidateQueries({ queryKey: ['gyms', 'search'] });
-        }
-      )
-      .subscribe();
+    // const plansChannel = supabase
+    //   .channel('gym-search-plans')
+    //   .on(
+    //     'postgres_changes',
+    //     {
+    //       event: '*',
+    //       schema: 'public',
+    //       table: 'membership_plans'
+    //     },
+    //     (payload) => {
+    //       console.log('Gym membership plan change detected:', payload);
+    //       queryClient.invalidateQueries({ queryKey: ['gyms', 'search'] });
+    //     }
+    //   )
+    //   .subscribe();
 
-    return () => {
-      supabase.removeChannel(gymsChannel);
-      supabase.removeChannel(plansChannel);
-    };
+    // return () => {
+    //   supabase.removeChannel(gymsChannel);
+    //   supabase.removeChannel(plansChannel);
+    // };
   }, [queryClient]);
 
   return useQuery({
