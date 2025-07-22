@@ -165,18 +165,25 @@ export const useGymCities = () => {
   return useQuery({
     queryKey: ['gym-cities'],
     queryFn: async () => {
+      // Since 'city' column doesn't exist, extract cities from address
       const { data, error } = await supabase
         .from('gyms')
-        .select('city')
-        .not('city', 'is', null)
-        .eq('is_active', true);
+        .select('address')
+        .not('address', 'is', null);
 
       if (error) throw error;
 
-      // Extract unique cities
+      // Extract unique cities from address field
       const cities = new Set<string>();
       data?.forEach(gym => {
-        if (gym.city) cities.add(gym.city);
+        if (gym.address) {
+          // Try to extract city from address (assuming it's the last part)
+          const addressParts = gym.address.split(',');
+          if (addressParts.length > 1) {
+            const city = addressParts[addressParts.length - 1].trim();
+            if (city) cities.add(city);
+          }
+        }
       });
 
       return Array.from(cities).sort();

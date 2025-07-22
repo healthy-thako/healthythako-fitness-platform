@@ -47,7 +47,7 @@ export const useNotifications = () => {
     }
 
     const channelName = `notifications-${user.id}`;
-    console.log('Creating notifications channel:', channelName);
+
     
     const channel = supabase.channel(channelName);
     channelRef.current = channel;
@@ -62,7 +62,7 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('New notification received:', payload);
+
           queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
           
           // Show toast notification

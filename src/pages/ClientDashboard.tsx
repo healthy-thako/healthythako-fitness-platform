@@ -15,9 +15,7 @@ import ClientMemberships from '@/pages/ClientMemberships';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import SignoutTestButton from '@/components/SignoutTestButton';
-import RoutingDebugger from '@/components/RoutingDebugger';
-import AuthDebugger from '@/components/AuthDebugger';
+
 
 const ClientDashboard = () => {
   const { user, profile, loading } = useAuth();
@@ -157,14 +155,7 @@ const ClientDashboard = () => {
             } />
           </Routes>
         </main>
-        {/* Debug components - Only in development with debug logs enabled */}
-        {import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true' && (
-          <>
-            <SignoutTestButton />
-            <RoutingDebugger />
-            <AuthDebugger />
-          </>
-        )}
+
       </div>
     </SidebarProvider>
   );

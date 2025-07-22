@@ -13,7 +13,7 @@ export const useConversations = () => {
   useEffect(() => {
     if (!user?.id) {
       if (channelRef.current) {
-        console.log('Cleaning up conversations channel - no user');
+
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }

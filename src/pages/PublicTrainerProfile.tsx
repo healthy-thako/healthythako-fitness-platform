@@ -12,7 +12,7 @@ import BookingModal from '@/components/BookingModal';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import FallbackDebugPanel from '@/components/FallbackDebugPanel';
+
 import Breadcrumb from '@/components/Breadcrumb';
 import { Star, MapPin, CheckCircle, MessageSquare, Calendar, Award, Users, ArrowLeft, Phone, Mail, Clock, Heart, Share2, Video, Home, MapPinIcon, Zap, DollarSign, Target, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
@@ -24,7 +24,7 @@ const PublicTrainerProfile = () => {
   const { user } = useAuth();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
+
 
   // Use fallback hook for immediate data loading
   const { data: trainer, isLoading, error, isUsingFallback } = useFallbackTrainerDetails(trainerId || '');
@@ -482,17 +482,7 @@ const PublicTrainerProfile = () => {
 
       <Footer />
 
-      {/* Debug Panel */}
-      <FallbackDebugPanel
-        isVisible={showDebugPanel}
-        onToggle={() => setShowDebugPanel(!showDebugPanel)}
-        trainersData={{
-          data: trainer ? [trainer] : [],
-          isLoading,
-          error,
-          isUsingFallback
-        }}
-      />
+
     </div>
   );
 };

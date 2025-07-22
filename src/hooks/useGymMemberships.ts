@@ -55,11 +55,10 @@ export const useClientGymMemberships = () => {
             id,
             name,
             address,
-            city,
-            area,
-            featured_image,
             phone,
-            email
+            email,
+            rating,
+            ht_verified
           ),
           membership_plans!user_memberships_plan_id_fkey(
             id,

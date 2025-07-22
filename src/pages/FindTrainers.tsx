@@ -11,7 +11,7 @@ import { useTrainerSearch, useTrainerSpecializations, TrainerSearchFilters } fro
 import { useFallbackTrainerSearch } from '@/hooks/useFallbackTrainerSearch';
 import TrainerProfileCard from '@/components/TrainerProfileCard';
 import TrainerProfileModal from '@/components/TrainerProfileModal';
-import FallbackDebugPanel from '@/components/FallbackDebugPanel';
+
 import BookingModal from '@/components/BookingModal';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -49,7 +49,7 @@ const FindTrainers = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
+
 
   // Debounce search query to avoid too many API calls
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -803,17 +803,7 @@ const FindTrainers = () => {
         />
       )}
 
-      {/* Debug Panel */}
-      <FallbackDebugPanel
-        isVisible={showDebugPanel}
-        onToggle={() => setShowDebugPanel(!showDebugPanel)}
-        trainersData={{
-          data: trainers || [],
-          isLoading,
-          error,
-          isUsingFallback
-        }}
-      />
+
     </div>
   );
 };

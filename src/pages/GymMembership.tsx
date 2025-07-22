@@ -134,8 +134,8 @@ const GymMembership = () => {
         gym.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         gym.description?.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
 
-      const matchesLocation = selectedLocation === 'all' || 
-        gym.city.toLowerCase() === selectedLocation.toLowerCase();
+      const matchesLocation = selectedLocation === 'all' ||
+        (gym.address && gym.address.toLowerCase().includes(selectedLocation.toLowerCase()));
 
       const matchesPrice = !cheapestPlan || 
         (Number(cheapestPlan.price) >= priceRange[0] && Number(cheapestPlan.price) <= priceRange[1]);

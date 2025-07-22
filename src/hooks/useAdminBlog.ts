@@ -244,7 +244,7 @@ export const useBlogStats = () => {
   return useQuery({
     queryKey: ['blog-stats'],
     queryFn: async () => {
-      console.log('Fetching blog stats');
+
       
       const sessionToken = localStorage.getItem('admin_session_token');
       if (!sessionToken) {
@@ -264,7 +264,7 @@ export const useBlogStats = () => {
 
       if (!response.ok) {
         const error = await response.text();
-        console.error('Error fetching blog stats:', error);
+        // Error fetching blog stats
         throw new Error(`Failed to fetch blog stats: ${error}`);
       }
 

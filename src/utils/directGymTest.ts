@@ -11,27 +11,24 @@ export const testDirectGymFetch = async () => {
   
   try {
     // Test 1: Very simple query
-    console.log('Test 1: Simple gym count...');
+
     const { data: countData, error: countError } = await supabase
       .from('gyms')
       .select('*', { count: 'exact', head: true });
 
     if (countError) {
-      console.error('❌ Count query failed:', countError);
+
       return { success: false, error: countError.message, step: 'count' };
     }
 
-    console.log('✅ Count query successful');
-
     // Test 2: Basic select
-    console.log('Test 2: Basic select...');
     const { data: basicData, error: basicError } = await supabase
       .from('gyms')
       .select('id, name')
       .limit(3);
 
     if (basicError) {
-      console.error('❌ Basic query failed:', basicError);
+
       return { success: false, error: basicError.message, step: 'basic' };
     }
 
@@ -98,26 +95,8 @@ export const testDirectImageFetch = async () => {
 
 // Run comprehensive direct tests
 export const runDirectGymTests = async () => {
-  console.log('🚀 Starting direct gym tests...');
-  
   const gymResult = await testDirectGymFetch();
   const imageResult = await testDirectImageFetch();
-
-  console.log('📋 Direct Test Results:');
-  console.log('- Gym Fetch:', gymResult.success ? '✅ PASS' : '❌ FAIL');
-  console.log('- Image Fetch:', imageResult.success ? '✅ PASS' : '❌ FAIL');
-
-  if (gymResult.success) {
-    console.log(`📊 Found ${gymResult.totalGyms} gyms`);
-  } else {
-    console.log(`❌ Gym fetch failed at step: ${gymResult.step} - ${gymResult.error}`);
-  }
-
-  if (imageResult.success) {
-    console.log(`📊 Found ${imageResult.totalImages} images`);
-  } else {
-    console.log(`❌ Image fetch failed: ${imageResult.error}`);
-  }
 
   return {
     gymResult,

@@ -192,11 +192,9 @@ export const getProductionConfig = () => {
   };
 };
 
-// Debug logging helper
+// Debug logging helper - disabled for production
 export const debugLog = (...args: any[]) => {
-  if (FEATURE_FLAGS.enableDebugLogs) {
-    console.log('[HealthyThako Debug]', ...args);
-  }
+  // Debug logging disabled for production
 };
 
 // Environment info for debugging

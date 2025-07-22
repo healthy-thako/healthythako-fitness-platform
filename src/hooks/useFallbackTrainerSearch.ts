@@ -3,7 +3,7 @@ import { TrainerSearchFilters } from './useTrainerSearch';
 
 // Fallback trainer data
 const getFallbackTrainerData = () => {
-  console.log('🔄 Returning fallback trainer data...');
+
   return [
     {
       id: 'fallback-trainer-1',
@@ -180,7 +180,7 @@ export const useFallbackTrainerSearch = (filters: TrainerSearchFilters) => {
         
         if (response.ok && !isCancelled) {
           const realData = await response.json();
-          console.log('✅ Successfully fetched real trainer data:', realData.length);
+
           
           // Transform real data to match expected format
           const transformedData = realData.map((trainer: any) => {
@@ -198,20 +198,25 @@ export const useFallbackTrainerSearch = (filters: TrainerSearchFilters) => {
               name: trainer.name || 'Unknown Trainer',
               email: trainer.contact_email || 'trainer@healthythako.com',
               location: trainer.location || 'Dhaka',
-              trainer_profiles: {
-                bio: trainer.bio || trainer.description || 'Experienced fitness trainer',
-                profile_image: trainer.image_url || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
-                rate_per_hour: pricingData.hourly_rate || 1500,
-                experience_years: parseInt(trainer.experience?.replace(/\D/g, '') || '3'),
-                specializations: trainer.specialties || [trainer.specialty || 'Fitness Training'],
-                is_verified: trainer.status === 'active',
-                services: trainer.specialties || ['Personal Training'],
-                languages: ['English', 'Bengali'],
-                availability: [],
-                certifications: trainer.certifications || ['Certified Personal Trainer'],
-                contact_phone: trainer.contact_phone || '+880 1234-567890',
-                pricing: pricingData
-              },
+              trainer_profiles: (() => {
+                // Use trainer_profiles data if available, otherwise fallback to trainers table data
+                const profileData = trainer.trainer_profiles?.[0] || {};
+
+                return {
+                  bio: profileData.bio || trainer.bio || trainer.description || 'Experienced fitness trainer',
+                  profile_image: profileData.profile_image || trainer.image_url || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
+                  rate_per_hour: profileData.rate_per_hour || pricingData.hourly_rate || 1500,
+                  experience_years: profileData.experience_years || parseInt(trainer.experience?.replace(/\D/g, '') || '3'),
+                  specializations: profileData.specializations || trainer.specialties || [trainer.specialty || 'Fitness Training'],
+                  is_verified: profileData.is_verified !== undefined ? profileData.is_verified : (trainer.status === 'active'),
+                  services: trainer.specialties || ['Personal Training'],
+                  languages: profileData.languages || ['English', 'Bengali'],
+                  availability: [],
+                  certifications: profileData.certifications || trainer.certifications || ['Certified Personal Trainer'],
+                  contact_phone: trainer.contact_phone || '+880 1234-567890',
+                  pricing: pricingData
+                };
+              })(),
               average_rating: parseFloat(trainer.average_rating) || 0,
               total_reviews: trainer.total_reviews || 0,
               completed_bookings: Math.floor(Math.random() * 80) + 20
@@ -220,10 +225,10 @@ export const useFallbackTrainerSearch = (filters: TrainerSearchFilters) => {
           
           setData(transformedData);
           setIsUsingFallback(false);
-          console.log('🔄 Switched from fallback to real data');
+
         }
       } catch (error) {
-        console.log('⚠️ Real data fetch failed, keeping fallback data:', error);
+        // Keep using fallback data on error
         // Keep using fallback data, don't set error
       }
     };

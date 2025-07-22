@@ -10,7 +10,7 @@ import { useGymMembershipPayment } from '@/hooks/useUddoktapayPayment';
 import { useFallbackGymDetails } from '@/hooks/useFallbackGymDetails';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import FallbackDebugPanel from '@/components/FallbackDebugPanel';
+
 import { ArrowLeft, MapPin, Star, Phone, Mail, Clock, Heart, Share2, Users, CheckCircle, Dumbbell, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -62,7 +62,7 @@ const PublicGymProfile = () => {
   const { user } = useAuth();
   const gymMembershipPayment = useGymMembershipPayment();
   const [isFavorited, setIsFavorited] = useState(false);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
+
 
   // Use fallback hook for immediate data loading
   const { data: gymData, isLoading: loading, error, isUsingFallback } = useFallbackGymDetails(gymId || '');
@@ -530,17 +530,7 @@ const PublicGymProfile = () => {
       
       <Footer />
 
-      {/* Debug Panel */}
-      <FallbackDebugPanel
-        isVisible={showDebugPanel}
-        onToggle={() => setShowDebugPanel(!showDebugPanel)}
-        gymsData={{
-          data: gym ? [gym] : [],
-          isLoading: loading,
-          error,
-          isUsingFallback
-        }}
-      />
+
     </div>
   );
 };

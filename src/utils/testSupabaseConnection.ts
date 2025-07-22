@@ -102,33 +102,9 @@ async function runTest(
   }
 }
 
-// Helper function to log test results
+// Helper function to log test results - disabled for production
 export const logTestResults = (results: ConnectionTestResult[]) => {
-  console.group('🔍 Supabase Connection Test Results');
-  
-  results.forEach((result, index) => {
-    const icon = result.success ? '✅' : '❌';
-    const duration = `${result.duration}ms`;
-    
-    console.group(`${icon} Test ${index + 1}: ${result.test} (${duration})`);
-    
-    if (result.success) {
-      console.log('✅ Success');
-      if (result.data) {
-        console.log('📊 Data:', result.data);
-      }
-    } else {
-      console.error('❌ Error:', result.error);
-    }
-    
-    console.groupEnd();
-  });
-  
-  const successCount = results.filter(r => r.success).length;
-  const totalCount = results.length;
-  
-  console.log(`\n📈 Summary: ${successCount}/${totalCount} tests passed`);
-  console.groupEnd();
+  // Test result logging disabled for production
 };
 
 // Quick test function for debugging

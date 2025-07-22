@@ -26,7 +26,7 @@ export interface TrainerSearchFilters {
 
 // Helper function to transform database trainer data to frontend format
 const transformTrainerData = (trainer: any) => {
-  console.log('🔄 Transforming trainer data:', trainer.name, trainer);
+
 
   // Extract experience years from experience string (e.g., "5 years" -> 5)
   const experienceYears = trainer.experience
@@ -39,7 +39,7 @@ const transformTrainerData = (trainer: any) => {
     try {
       pricingData = JSON.parse(pricingData);
     } catch (e) {
-      console.warn('Failed to parse pricing data:', pricingData);
+      // Failed to parse pricing data, using default
       pricingData = { hourly_rate: 1500 };
     }
   }
@@ -55,7 +55,7 @@ const transformTrainerData = (trainer: any) => {
     try {
       availabilityData = JSON.parse(availabilityData);
     } catch (e) {
-      console.warn('Failed to parse availability data:', availabilityData);
+      // Failed to parse availability data, using default
       availabilityData = [];
     }
   }
@@ -98,7 +98,7 @@ const transformTrainerData = (trainer: any) => {
 
 // Fallback trainer data for when database queries fail
 const getFallbackTrainerData = () => {
-  console.log('Returning fallback trainer data...');
+
   return [
     {
       id: 'fallback-trainer-1',
@@ -157,7 +157,7 @@ export const useTrainerSearch = (filters: TrainerSearchFilters) => {
   return useQuery({
     queryKey: ['trainers', filters],
     queryFn: async () => {
-      console.log('🔍 Fetching trainers with filters:', filters);
+
 
       // Create a timeout promise that rejects after 5 seconds
       const timeoutPromise = new Promise((_, reject) => {
@@ -166,6 +166,7 @@ export const useTrainerSearch = (filters: TrainerSearchFilters) => {
 
       try {
         // Build query with proper field selection based on actual database schema
+        // Note: trainer_profiles relationship doesn't work, so we'll use trainers table data and fetch profiles separately if needed
         let url = 'https://lhncpcsniuxnrmabbkmr.supabase.co/rest/v1/trainers?select=id,name,specialty,specialties,pricing,availability,average_rating,total_reviews,bio,image_url,contact_email,contact_phone,location,experience,certifications,description&status=eq.active';
 
         // Apply filters
@@ -210,7 +211,27 @@ export const useTrainerSearch = (filters: TrainerSearchFilters) => {
 
         const data = await response.json();
 
-        console.log('✅ Successfully fetched trainers:', data.length);
+
+
+        // Fetch trainer_profiles data separately and merge it
+        let trainerProfiles: any[] = [];
+        try {
+          const profilesResponse = await fetch(
+            'https://lhncpcsniuxnrmabbkmr.supabase.co/rest/v1/trainer_profiles?select=trainer_id,bio,profile_image,rate_per_hour,experience_years,specializations,is_verified,languages,availability,certifications',
+            {
+              headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxobmNwY3NuaXV4bnJtYWJia21yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMDY5MTUsImV4cCI6MjA1NjU4MjkxNX0.zWr2gDn3bxVzGeCOFzXxgGYtusw6aoboyWBtB1cDo0U',
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          if (profilesResponse.ok) {
+            trainerProfiles = await profilesResponse.json();
+
+          }
+        } catch (profileError) {
+          // Silently handle profile fetch errors
+        }
 
         // Transform data to match frontend expectations
         return data.map((trainer: any) => {
@@ -239,28 +260,32 @@ export const useTrainerSearch = (filters: TrainerSearchFilters) => {
             name: trainer.name || 'Unknown Trainer',
             email: trainer.contact_email || 'trainer@healthythako.com',
             location: trainer.location || 'Dhaka',
-            trainer_profiles: {
-              bio: trainer.bio || trainer.description || 'Experienced fitness trainer',
-              profile_image: trainer.image_url || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
-              rate_per_hour: pricingData.hourly_rate || 1500,
-              experience_years: parseInt(trainer.experience?.replace(/\D/g, '') || '3'),
-              specializations: trainer.specialties || [trainer.specialty || 'Fitness Training'],
-              is_verified: trainer.status === 'active',
-              services: trainer.specialties || ['Personal Training'],
-              languages: ['English', 'Bengali'],
-              availability: availabilityDays,
-              certifications: trainer.certifications || ['Certified Personal Trainer'],
-              contact_phone: trainer.contact_phone || '+880 1234-567890',
-              pricing: pricingData
-            },
+            trainer_profiles: (() => {
+              // Find matching trainer profile data
+              const profileData = trainerProfiles.find(p => p.trainer_id === trainer.id) || {};
+
+              return {
+                bio: profileData.bio || trainer.bio || trainer.description || 'Experienced fitness trainer',
+                profile_image: profileData.profile_image || trainer.image_url || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
+                rate_per_hour: profileData.rate_per_hour || pricingData.hourly_rate || 1500,
+                experience_years: profileData.experience_years || parseInt(trainer.experience?.replace(/\D/g, '') || '3'),
+                specializations: profileData.specializations || trainer.specialties || [trainer.specialty || 'Fitness Training'],
+                is_verified: profileData.is_verified !== undefined ? profileData.is_verified : (trainer.status === 'active'),
+                services: trainer.specialties || ['Personal Training'],
+                languages: profileData.languages || ['English', 'Bengali'],
+                availability: availabilityDays,
+                certifications: profileData.certifications || trainer.certifications || ['Certified Personal Trainer'],
+                contact_phone: trainer.contact_phone || '+880 1234-567890',
+                pricing: pricingData
+              };
+            })(),
             average_rating: parseFloat(trainer.average_rating) || 0,
             total_reviews: trainer.total_reviews || 0,
             completed_bookings: Math.floor(Math.random() * 80) + 20
           };
         });
       } catch (error) {
-        console.error('❌ Error fetching trainers:', error);
-        console.log('🔄 Using fallback trainer data...');
+        // Return fallback data on error
         return getFallbackTrainerData();
       }
     },
@@ -269,8 +294,7 @@ export const useTrainerSearch = (filters: TrainerSearchFilters) => {
     cacheTime: 1000 * 60 * 10, // 10 minutes
     timeout: 5000, // 5 second timeout
     onError: (error) => {
-      console.error('❌ useTrainerSearch error:', error);
-      console.log('🔄 Will use fallback data...');
+      // Silently handle errors, fallback data will be used
     }
   });
 };
@@ -279,7 +303,7 @@ export const useTrainerSpecializations = () => {
   return useQuery({
     queryKey: ['trainer-specializations'],
     queryFn: async () => {
-      console.log('🔍 Fetching trainer specializations...');
+
 
       // Return fallback specializations immediately
       const fallbackSpecializations = [
@@ -319,7 +343,7 @@ export const useTrainerSpecializations = () => {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ Successfully fetched real specializations data');
+
 
           const specializations = new Set<string>();
           data?.forEach((trainer: any) => {
@@ -330,22 +354,20 @@ export const useTrainerSpecializations = () => {
 
           // If we got real data, return it, otherwise return fallback
           if (realSpecializations.length > 0) {
-            console.log('🔄 Using real specializations data');
+
             return realSpecializations;
           }
         }
       } catch (error) {
-        console.log('⚠️ Real specializations fetch failed, using fallback:', error);
+        // Real specializations fetch failed, using fallback
       }
-
-      console.log('🔄 Using fallback specializations data');
       return fallbackSpecializations;
     },
     retry: false, // Don't retry, use fallback immediately
     staleTime: 1000 * 60 * 10, // 10 minutes
     cacheTime: 1000 * 60 * 30, // 30 minutes
     onError: (error) => {
-      console.error('❌ useTrainerSpecializations error:', error);
+      // Silently handle specializations fetch errors
     }
   });
 };
@@ -358,7 +380,7 @@ export const useTrainerDetails = (trainerId: string) => {
       if (!trainerId) throw new Error('No trainer ID provided');
 
       try {
-        console.log('🔍 Fetching trainer details for ID:', trainerId);
+
 
         // First try to get the trainer's user_id
         const { data: trainerBasic, error: basicError } = await queryWithTimeout(
@@ -371,7 +393,7 @@ export const useTrainerDetails = (trainerId: string) => {
         );
 
         // Use direct trainer query (simplified approach)
-        console.log('🔄 Using direct trainer query...');
+
 
         const { data: trainer, error: trainerError } = await queryWithTimeout(
           supabase
@@ -404,7 +426,7 @@ export const useTrainerDetails = (trainerId: string) => {
         );
 
         if (trainerError) {
-          console.error('Error fetching trainer:', trainerError);
+          // Error fetching trainer
           throw trainerError;
         }
 
@@ -439,8 +461,7 @@ export const useTrainerDetails = (trainerId: string) => {
           reviews: reviews || []
         };
       } catch (error) {
-        console.error('❌ Error in trainer details query:', error);
-        console.log('🔄 Using fallback trainer data for details...');
+        // Error in trainer details query, using fallback data
 
         // Return fallback data for the specific trainer
         const fallbackTrainers = getFallbackTrainerData();

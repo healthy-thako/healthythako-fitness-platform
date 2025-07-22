@@ -19,7 +19,7 @@ const AuthErrorHandler: React.FC<AuthErrorHandlerProps> = ({ children }) => {
       if (error?.message?.includes('refresh') || 
           error?.message?.includes('token') || 
           error?.message?.includes('Invalid Refresh Token')) {
-        console.warn('Auth error detected:', error.message);
+        // Auth error detected
         setHasAuthError(true);
       }
     };
@@ -29,7 +29,7 @@ const AuthErrorHandler: React.FC<AuthErrorHandlerProps> = ({ children }) => {
       if (event.reason?.message?.includes('refresh') || 
           event.reason?.message?.includes('token') ||
           event.reason?.message?.includes('Invalid Refresh Token')) {
-        console.warn('Unhandled auth error:', event.reason.message);
+        // Unhandled auth error
         setHasAuthError(true);
         event.preventDefault(); // Prevent the error from being logged to console
       }
@@ -67,7 +67,7 @@ const AuthErrorHandler: React.FC<AuthErrorHandlerProps> = ({ children }) => {
         try {
           localStorage.removeItem(key);
         } catch (error) {
-          console.warn('Could not remove localStorage key:', key);
+          // Could not remove localStorage key
         }
       });
 
@@ -75,7 +75,7 @@ const AuthErrorHandler: React.FC<AuthErrorHandlerProps> = ({ children }) => {
       try {
         sessionStorage.clear();
       } catch (error) {
-        console.warn('Could not clear sessionStorage');
+        // Could not clear sessionStorage
       }
 
       setHasAuthError(false);

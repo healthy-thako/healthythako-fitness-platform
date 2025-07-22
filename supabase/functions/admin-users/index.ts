@@ -421,11 +421,11 @@ serve(async (req) => {
       }
 
       if (filters?.city) {
-        query = query.eq('city', filters.city)
+        query = query.ilike('address', `%${filters.city}%`)
       }
 
       if (filters?.search) {
-        query = query.or(`name.ilike.%${filters.search}%,area.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+        query = query.or(`name.ilike.%${filters.search}%,address.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
       }
 
       const { data: gyms, error } = await query

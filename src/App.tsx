@@ -17,7 +17,7 @@ import ProfileProtectedRoute from '@/components/ProfileProtectedRoute';
 import RoleBasedRedirect from '@/components/RoleBasedRedirect';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import AuthErrorHandler from '@/components/AuthErrorHandler';
-import SessionDebugger from '@/components/SessionDebugger';
+
 import BrandLoadingSpinner from '@/components/BrandLoadingSpinner';
 
 // Lazy load pages for better performance
@@ -58,31 +58,7 @@ const GymPass = lazy(() => import('@/pages/GymPass'));
 const Blog = lazy(() => import('@/pages/Blog'));
 const BlogPost = lazy(() => import('@/pages/BlogPost'));
 
-// Test components removed - only essential debug components remain
-const ConnectionTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
-  ? lazy(() => import('@/pages/ConnectionTest'))
-  : null;
-const RoutingTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
-  ? lazy(() => import('@/pages/RoutingTest'))
-  : null;
-const LinkingTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
-  ? lazy(() => import('@/pages/LinkingTest'))
-  : null;
-const DirectLinkTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
-  ? lazy(() => import('@/pages/DirectLinkTest'))
-  : null;
-const BypassTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
-  ? lazy(() => import('@/pages/BypassTest'))
-  : null;
-const AuthTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
-  ? lazy(() => import('@/pages/AuthTest'))
-  : null;
-const BasicAuthTest = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true'
-  ? lazy(() => import('@/pages/BasicAuthTest'))
-  : null;
 
-// Deployment test component - Always available for debugging deployment issues
-const DeploymentTest = lazy(() => import('@/components/DeploymentTest'));
 // Removed test components
 
 // Dashboard pages
@@ -150,7 +126,7 @@ function App() {
                     <Route path="/blog" element={<PageWrapper><Blog /></PageWrapper>} />
                     <Route path="/blog/:slug" element={<PageWrapper><BlogPost /></PageWrapper>} />
                     
-                    {/* Protected profile routes - TEMPORARILY BYPASSED FOR TESTING */}
+                    {/* Public profile routes */}
                     <Route path="/trainer/:trainerId" element={
                       <PageWrapper><PublicTrainerProfile /></PageWrapper>
                     } />
@@ -193,21 +169,7 @@ function App() {
                     <Route path="/join-trainer" element={<PageWrapper><JoinTrainer /></PageWrapper>} />
                     <Route path="/gympass" element={<PageWrapper><GymPass /></PageWrapper>} />
 
-                    {/* Auth Test Route - Development only */}
-                    {AuthTest && (
-                      <Route path="/auth-test" element={
-                        <Suspense fallback={<BrandLoadingSpinner />}>
-                          <PageWrapper><AuthTest /></PageWrapper>
-                        </Suspense>
-                      } />
-                    )}
 
-                    {/* Deployment Test Route - Always available for debugging */}
-                    <Route path="/deployment-test" element={
-                      <Suspense fallback={<BrandLoadingSpinner />}>
-                        <PageWrapper><DeploymentTest /></PageWrapper>
-                      </Suspense>
-                    } />
 
                     {/* Onboarding route - requires authentication */}
                     <Route path="/onboarding" element={
@@ -265,8 +227,7 @@ function App() {
                   </Routes>
                 </div>
                 <Toaster />
-                {/* Session Debugger - Only in development with debug logs enabled */}
-                {import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true' && <SessionDebugger />}
+
               </ErrorBoundary>
             </AuthErrorHandler>
             </ConversationProvider>
